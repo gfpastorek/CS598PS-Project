@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import datetime as dt
 import matplotlib.pyplot as plt
+import os
 
 
 # XLE XOM CVX SLB KMI EOG COP OXY PXD VLO USO
@@ -32,7 +33,24 @@ def plot_series(data, sec1n, start_hour=4, start_min=0, end_hour=20, end_min=0):
     plt.show()
 
 
-def plot_spread(data, sec1n, sec2n, B, start_hour=4, start_min=0, end_hour=20, end_min=0):
+def make_bars(data, sec1n, start_hour=9, start_min=30, end_hour=15, end_min=30, bar_width='second'):
+
+    minute_bars = (bar_width == 'minute')
+
+    data = data[data['TIME_M'] >= dt.datetime(2012,1,3,start_hour,start_min,0,0)]
+    data = data[data['TIME_M'] <= dt.datetime(2012,1,3,end_hour,end_min,0,0)]
+
+    sec1 = data[data['SYM_ROOT'] == sec1n]
+
+    sec1_seconds = \
+        sec1.set_index('TIME_M')\
+        .groupby(lambda x: dt.datetime(x.year, x.month, x.day, x.hour, x.minute, 0 if minute_bars else x.second, 0))\
+        .mean()
+
+    return sec1_seconds.drop(['DATE', 'SYM_SUFFIX', 'index'])
+
+
+def plot_spread(data, sec1n, sec2n, B, start_hour=9, start_min=30, end_hour=15, end_min=30):
     data = data[data['TIME_M'] >= dt.datetime(2012,1,3,start_hour,start_min,0,0)]
     data = data[data['TIME_M'] <= dt.datetime(2012,1,3,end_hour,end_min,0,0)]
     sec1 = data[data['SYM_ROOT'] == sec1n]
@@ -56,8 +74,62 @@ def plot_spread(data, sec1n, sec2n, B, start_hour=4, start_min=0, end_hour=20, e
     plt.show()
 
 
-fname = 'xle_jan_3_12'
-fpath = "C:\Users\Greg\Documents\CS 598PS\project\data\\{}\{}.csv".format(fname, fname)
+next_order_id = 1
+
+class Order(object):
+    def __init__(self, sym, qty, type="market"):
+        self.sym = sym
+        self.qty = qty
+        self.type = type
+        global next_order_id
+        self.order_id = next_order_id
+        next_order_id += 1
+
+
+def backtest(data, strategy):
+
+    row_iterator = data.iterrows()
+    _, last = row_iterator.next()
+    cash = 0.0
+    pnl_history = []
+    order_history = []
+    positions = {}
+    security_data = {}
+    prev_time = None
+
+    def check_signals():
+        global cash
+        portfolio_value = np.sum(
+            [positions[sym] * (security_data[sym]['BID'] if positions[sym] > 0 else security_data[sym]['ASK']) for sym in
+             positions])
+        orders = strategy(security_data)
+        for order in orders:
+            sdata = security_data[order.sym]
+            positions[order.sym] = positions.get(order.sym, 0) + order.qty
+            price = sdata['BID'] if order.qty > 0 else sdata['ASK']  # TODO - what if qty is larger than BID/ASK QTY?
+            order_history.append((sdata['TIME_M'], order.sym, order.qty, price))
+            cash += -1 * order.qty * price
+        pnl_history.append(cash + portfolio_value)
+
+    for i, row in row_iterator:
+        if (row['TIME_M'] != prev_time) and (prev_time is not None):
+            check_signals()
+        prev_time = row['TIME_M']
+        security_data[row['SYM_ROOT']] = row
+
+    return pnl_history, order_history
+
+
+
+
+
+def strategy(data):
+    pass
+
+root_dir = os.path.realpath(os.path.dirname(os.path.dirname(__file__)))
+#fname = 'xle_jan_3_12'
+fname = 'xle_only_jan_5_12'
+fpath = os.path.join(root_dir, 'data', fname, '{}.csv'.format(fname))
 data = pd.read_csv(fpath, parse_dates=['TIME_M'], date_parser=convert_time)
 
 data = data.reset_index()
@@ -66,7 +138,10 @@ data = data[data['BID'] != 0]
 data = data[data['ASK'] != 0]
 data = data[data['NATBBO_IND'] == 1]
 
-plot_series(data, 'XLE', 8, 30, 16, 30)
+plot_series(data, 'XLE', 9, 30, 15, 30)
+
+data = make_bars(data, 'XLE', 9, 30, 15, 30, bar_width='second')
+backtest(data, strategy)
 
 """
 plot_spread(data, 'IAU', 'SGOL', 0.1, 8, 30, 16, 30)
