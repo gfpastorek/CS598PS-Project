@@ -44,10 +44,10 @@ def make_bars(data, sec1n, start_hour=9, start_min=30, end_hour=15, end_min=30, 
 
     sec1_seconds = \
         sec1.set_index('TIME_M')\
-        .groupby(lambda x: dt.datetime(x.year, x.month, x.day, x.hour, x.minute, 0 if minute_bars else x.second, 0))\
+        .groupby(['SYM_ROOT', lambda x: dt.datetime(x.year, x.month, x.day, x.hour, x.minute, 0 if minute_bars else x.second, 0)])\
         .mean()
 
-    return sec1_seconds.drop(['DATE', 'SYM_SUFFIX', 'index'])
+    return sec1_seconds.drop(['DATE', 'SYM_SUFFIX', 'index'], 1).reset_index().rename(columns={'level_1': 'TIME_M'})
 
 
 def plot_spread(data, sec1n, sec2n, B, start_hour=9, start_min=30, end_hour=15, end_min=30):
@@ -88,34 +88,28 @@ class Order(object):
 
 def backtest(data, strategy):
 
-    row_iterator = data.iterrows()
-    _, last = row_iterator.next()
-    cash = 0.0
+    cash = [0.0]
     pnl_history = []
     order_history = []
     positions = {}
     security_data = {}
-    prev_time = None
 
-    def check_signals():
-        global cash
-        portfolio_value = np.sum(
-            [positions[sym] * (security_data[sym]['BID'] if positions[sym] > 0 else security_data[sym]['ASK']) for sym in
-             positions])
+    def check_signals(quotes):
+        for i in xrange(0, len(quotes)):
+            security_data[quotes.iloc[i]['SYM_ROOT']] = quotes.iloc[i]
         orders = strategy(security_data)
         for order in orders:
             sdata = security_data[order.sym]
             positions[order.sym] = positions.get(order.sym, 0) + order.qty
             price = sdata['BID'] if order.qty > 0 else sdata['ASK']  # TODO - what if qty is larger than BID/ASK QTY?
-            order_history.append((sdata['TIME_M'], order.sym, order.qty, price))
-            cash += -1 * order.qty * price
-        pnl_history.append(cash + portfolio_value)
+            order_history.append((quotes.iloc[0]['TIME_M'], order.sym, order.qty, price))
+            cash[0] += -1 * order.qty * price
+        portfolio_value = np.sum(
+            [positions[sym] * (security_data[sym]['BID'] if positions[sym] > 0 else security_data[sym]['ASK']) for sym in
+             positions])
+        pnl_history.append(cash[0] + portfolio_value)
 
-    for i, row in row_iterator:
-        if (row['TIME_M'] != prev_time) and (prev_time is not None):
-            check_signals()
-        prev_time = row['TIME_M']
-        security_data[row['SYM_ROOT']] = row
+    data.groupby('TIME_M').apply(check_signals)
 
     return pnl_history, order_history
 
@@ -123,8 +117,9 @@ def backtest(data, strategy):
 
 
 
-def strategy(data):
-    pass
+def test_strategy(data):
+    print data
+    return []
 
 root_dir = os.path.realpath(os.path.dirname(os.path.dirname(__file__)))
 #fname = 'xle_jan_3_12'
@@ -138,10 +133,10 @@ data = data[data['BID'] != 0]
 data = data[data['ASK'] != 0]
 data = data[data['NATBBO_IND'] == 1]
 
-plot_series(data, 'XLE', 9, 30, 15, 30)
+#plot_series(data, 'XLE', 9, 30, 15, 30)
 
 data = make_bars(data, 'XLE', 9, 30, 15, 30, bar_width='second')
-backtest(data, strategy)
+backtest(data, test_strategy)
 
 """
 plot_spread(data, 'IAU', 'SGOL', 0.1, 8, 30, 16, 30)
