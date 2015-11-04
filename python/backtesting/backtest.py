@@ -55,7 +55,3 @@ def backtest(data, strategy):
     data.groupby('TIME_M').apply(check_signals)
 
     return pnl_history, order_history
-
-
-
-

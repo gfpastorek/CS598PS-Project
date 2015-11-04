@@ -63,7 +63,3 @@ data = pd.read_csv(fpath, parse_dates=['TIME_M'], date_parser=convert_time)
 data = make_bars(data, 'XLE', 9, 30, 15, 30, bar_width='second')
 
 backtest(data, test_strategy)
-
-
-
-
