@@ -16,6 +16,16 @@ def convert_time(d):
     return dt.datetime(2012, 1, 3, int(h), int(m), int(s), int(ms)*1000)
 
 
+# FEATURES/TRANSFORMATIONS
+
+# data = get_data('AAPL', start, end)
+#
+#
+# def make_ohlc(df, params):
+# 	price_header = params['price_header']
+# 	df.resample('1s', how={''})
+
+
 def make_bars(data, sec1n, start_hour=9, start_min=30, end_hour=15, end_min=30, bar_width='second'):
 
     data = data.reset_index()
