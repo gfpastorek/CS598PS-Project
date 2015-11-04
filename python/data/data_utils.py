@@ -3,6 +3,8 @@ __author__ = 'thibautxiong'
 import datetime as dt
 import pandas as pd
 
+# TODO: filter by time (maybe in get_data? --> pass in start_time and end_time for intraday limits)
+
 
 def convert_time(d):
     """
@@ -21,8 +23,8 @@ def convert_time(d):
 
 def get_test_data():
     df = pd.read_csv('/Users/thibautxiong/Documents/Development/CS598PS-Project/xle_test.csv',
-                       parse_dates=[['DATE', 'TIME_M']], date_parser=convert_time)
-
+                     parse_dates=[['DATE', 'TIME_M']], date_parser=convert_time)
+    df = df[df.NATBBO_IND != 0]
     df = df.set_index('DATE_TIME_M', drop=True)
     df.index.names = ['DATE_TIME']
     df.columns = ['SYM', 'SYM_SUFFIX', 'BID_PRICE', 'BID_SIZE', 'ASK_PRICE', 'ASK_SIZE', 'NATBBO_IND']

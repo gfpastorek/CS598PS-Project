@@ -48,6 +48,7 @@ def get_ohlc(data, params):
     ohlc = mid_prices.resample(freq, how='ohlc', fill_method='ffill')
     bid_size_sum = data['BID_SIZE'].resample(freq, how='sum', fill_method='ffill')
     ask_size_sum = data['ASK_SIZE'].resample(freq, how='sum', fill_method='ffill')
+    ohlc.columns = ['OPEN', 'HIGH', 'LOW', 'CLOSE']
     ohlc['BID_SIZE'] = bid_size_sum
     ohlc['ASK_SIZE'] = ask_size_sum
 
