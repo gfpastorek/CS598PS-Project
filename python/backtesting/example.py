@@ -56,12 +56,12 @@ def test_strategy(data, positions, pnl):
     orders = []
     for sym in data:
         pos = positions.get(sym, 0)
-        ema1 = data[sym]['dEMA_0.5']
-        ema2 = data[sym]['dEMA_1']
-        ema3 = data[sym]['dEMA_2']
-        if (ema1 > 0.01) and (ema2 > 0.01) and (ema3 > 0.01):
+        dema1 = data[sym]['dEMA_0.5']
+        dema2 = data[sym]['dEMA_1']
+        dema3 = data[sym]['dEMA_2']
+        if (dema1 > 0.01) and (dema2 > 0.01) and (dema3 > 0.01) and (pos <= 0):
             orders.append(Order(sym, 10-pos, type='market'))
-        elif (ema1 < -0.01) and (ema2 < -0.01) and (ema3 < -0.01) and (pos >= 0):
+        elif (dema1 < -0.01) and (dema2 < -0.01) and (dema3 < -0.01) and (pos >= 0):
             orders.append(Order(sym, -10-pos, type='market'))
     print positions
     print pnl
