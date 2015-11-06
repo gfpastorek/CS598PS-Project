@@ -1,7 +1,10 @@
 from __future__ import division
+import numpy as np
 import pandas as pd
 import datetime as dt
+import matplotlib.pyplot as plt
 import os
+
 
 from backtest import backtest, Order
 
@@ -49,12 +52,23 @@ def make_bars(data, sec1n, start_hour=9, start_min=30, end_hour=15, end_min=30, 
     return sec1_seconds.drop(['DATE', 'SYM_SUFFIX', 'index'], 1).reset_index().rename(columns={'level_1': 'TIME_M'})
 
 
-def test_strategy(data):
-    print data
-    return []
+def test_strategy(data, positions, pnl):
+    orders = []
+    for sym in data:
+        pos = positions.get(sym, 0)
+        ema1 = data[sym]['dEMA_0.5']
+        ema2 = data[sym]['dEMA_1']
+        ema3 = data[sym]['dEMA_2']
+        if (ema1 > 0.01) and (ema2 > 0.01) and (ema3 > 0.01):
+            orders.append(Order(sym, 10-pos, type='market'))
+        elif (ema1 < -0.01) and (ema2 < -0.01) and (ema3 < -0.01) and (pos >= 0):
+            orders.append(Order(sym, -10-pos, type='market'))
+    print positions
+    print pnl
+    return orders
 
 
-root_dir = os.path.realpath(os.path.dirname(os.path.dirname(__file__)))
+root_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 #fname = 'xle_jan_3_12'
 fname = 'xle_only_jan_5_12'
 fpath = os.path.join(root_dir, 'data', fname, '{}.csv'.format(fname))
@@ -62,4 +76,14 @@ data = pd.read_csv(fpath, parse_dates=['TIME_M'], date_parser=convert_time)
 
 data = make_bars(data, 'XLE', 9, 30, 15, 30, bar_width='second')
 
-backtest(data, test_strategy)
+data['price'] = (data['BID'] + data['ASK'])/2
+
+for hl in [0.5, 1, 2]:
+    data['dEMA_{}'.format(hl)] = 0
+    data.ix[1:, 'dEMA_{}'.format(hl)] = np.diff(pd.ewma(data['price'], halflife=hl))
+
+pnl_history, order_history = backtest(data, test_strategy, transaction_costs=0.05)
+
+pd.DataFrame(pnl_history).plot()
+
+plt.show()
