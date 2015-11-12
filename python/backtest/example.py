@@ -136,7 +136,29 @@ for hl in hls:
 data['dEMA'] = np.mean([data['dEMA_{}'.format(hl)] for hl in hls], axis=0)
 
 data['log_returns'] = np.concatenate([[0], np.diff(data['log_price'])])
+
+return_windows = [2, 3, 4, 5, 10, 20, 50, 100]
+
+
+for hl in hls:
+    data['log_returns_{}+'.format(hl)] = np.concatenate([(pd.ewma(data['log_returns'].values[::-1], hl))[:0:-1], [None]])
+    data['log_returns_{}-'.format(hl)] = np.concatenate([[None], pd.ewma(data['log_returns'], hl).values[:-1]])
+    data['log_returns_std_{}+'.format(hl)] = np.concatenate([(pd.rolling_std(data['log_returns'].values[::-1], hl))[:0:-1], [None]])
+    data['log_returns_std_{}-'.format(hl)] = np.concatenate([[None], pd.rolling_std(data['log_returns'], hl).values[:-1]])
+
+
 data['std'] = pd.rolling_std(data['log_returns'], 1000)
+
+f = lambda window: plt.scatter(data['log_returns'], data['log_returns_{}+'.format(window)])
+g = lambda w1, w2: plt.scatter(data['log_returns_{}-'.format(w1)], data['log_returns_{}+'.format(w2)])
+g2 = lambda w1, w2, min_w1: plt.scatter(
+    data[np.abs(data['log_returns_{}-'.format(w1)].fillna(0)) >= min_w1]['log_returns_{}-'.format(w1)],
+    data[np.abs(data['log_returns_{}-'.format(w1)].fillna(0)) >= min_w1]['log_returns_{}+'.format(w2)])
+
+g3 = lambda w1, w2, min_w1: plt.scatter(
+    np.abs(data[np.abs(data['log_returns_{}-'.format(w1)].fillna(0)) >= min_w1]['log_returns_{}-'.format(w1)]),
+    np.sign(data[np.abs(data['log_returns_{}-'.format(w1)].fillna(0)) >= min_w1]['log_returns_{}-'.format(w1)])*data[np.abs(data['log_returns_{}-'.format(w1)].fillna(0)) >= min_w1]['log_returns_{}+'.format(w2)])
+
 
 #data['momentum'] = data['dEMA']
 data['momentum'] = data['EMA_10'] - data['EMA_40']
