@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import os
 
 
-from backtest import backtest, Order
+from backtest.backtest import backtest, Order
 
 
 # XLE XOM CVX SLB KMI EOG COP OXY PXD VLO USO
@@ -52,7 +52,7 @@ def make_bars(data, sec1n, start_hour=9, start_min=30, end_hour=15, end_min=30, 
     return sec1_seconds.drop(['DATE', 'SYM_SUFFIX', 'index'], 1).reset_index().rename(columns={'level_1': 'TIME_M'})
 
 
-def test_strategy(data, positions, pnl):
+def test_strategy(data, positions):
     orders = []
     for sym in data:
         pos = positions.get(sym, 0)
@@ -63,8 +63,6 @@ def test_strategy(data, positions, pnl):
             orders.append(Order(sym, 10-pos, type='market'))
         elif (dema1 < -0.01) and (dema2 < -0.01) and (dema3 < -0.01) and (pos >= 0):
             orders.append(Order(sym, -10-pos, type='market'))
-    print positions
-    print pnl
     return orders
 
 
