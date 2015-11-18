@@ -78,6 +78,7 @@ for month in range(12):
                 pass
 
         # download results
+        # TODO - make format {TICKER}_%m_%d_%y.csv
         filename = 'TICKER_' + sys.argv[1] + str(month+1).zfill(2) + str(day+1).zfill(2) + '.csv'
         with open(filename, 'wb') as handle:
             if result is not None:

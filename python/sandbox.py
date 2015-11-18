@@ -4,7 +4,7 @@ import pandas as pd
 import datetime as dt
 import matplotlib.pyplot as plt
 import os
-
+from pykalman import KalmanFilter
 
 from backtest.backtest import backtest, Order
 
@@ -133,9 +133,9 @@ def magic_strategy(data, positions):
 #os.chdir(os.path.join(os.getcwd(), 'python'))
 root_dir = os.path.realpath(os.path.dirname(os.getcwd()))
 #fname = 'xle_jan_3_12'
-#fname = 'xle_only_jan_5_12'
-fname = 'xle_only_jan_6_12'
-#fname = 'xle_only_jan_7_12'
+#fname = 'xle_01_05_12'
+fname = 'xle_01_06_12'
+#fname = 'xle_01_07_12'
 fpath = os.path.join(root_dir, 'data', fname, '{}.csv'.format(fname))
 data = pd.read_csv(fpath, parse_dates=['TIME_M'], date_parser=convert_time)
 
@@ -162,6 +162,16 @@ for hl in hls:
 data['dEMA'] = np.mean([data['dEMA_{}'.format(hl)] for hl in hls], axis=0)
 
 data['log_returns'] = np.concatenate([[0], np.diff(data['log_price'])])
+
+kf = KalmanFilter(transition_matrices=[1],
+                  observation_matrices = [1],
+                  initial_state_mean = data['price'].iloc[0],
+                  initial_state_covariance = 1,
+                  observation_covariance=1,
+                  transition_covariance=.01)
+
+data['kf'], _ = kf.filter(data['price'].values)
+
 
 return_windows = [2, 3, 4, 5, 10, 20, 50, 100]
 
@@ -201,6 +211,8 @@ axes[0].plot(data['TIME_M'].values, data['price'].values)
 for hl in hls:
     axes[0].plot(data['TIME_M'].values, data['EMA_{}'.format(hl)].values)
 
+axes[0].plot(data['TIME_M'].values, data['kf'].values)
+
 long_orders = filter(lambda x: x[2] > 0, order_history)
 short_orders = filter(lambda x: x[2] < 0, order_history)
 long_order_times = map(lambda x: x[0], long_orders)
@@ -219,10 +231,11 @@ ax2.plot(data['TIME_M'].values, (data['ASK']-data['BID']).values)
 axes[1].plot(data['TIME_M'].values, data['log_returns_10+'].values, label='lr_10+')
 axes[1].plot(data['TIME_M'].values, data['log_returns_40+'].values, label='lr_40+')
 axes[1].plot(data['TIME_M'].values, data['log_returns_100+'].values, label='lr_100+')
+axes[1].plot(data['TIME_M'].values, data['kf_lr+'].values, label='kf_lr+')
 
 plt.legend()
 
-axes[2].plot(pnl_history, label='pnl')
+axes[2].plot(data['TIME_M'].values, pnl_history[1:], label='pnl')
 
 plt.legend()
 
