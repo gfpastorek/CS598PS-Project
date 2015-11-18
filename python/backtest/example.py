@@ -19,7 +19,7 @@ count = 0
 
 def test_strategy(data, positions):
     orders = []
-    #momentum threshold = 0.001
+    momentum_threshold = 0.0001
     entry_threshold = 0.000035
     exit_threshold = 0.00002
     global count
@@ -28,11 +28,12 @@ def test_strategy(data, positions):
         return[]
     for sym in data:
         pos = positions.get(sym, 0)
-        #qty = 10
         qty = 10*int(data[sym]['dEMA_10']/entry_threshold) - pos
-        if data[sym]['momentum'] >= 0 and data[sym]['dEMA_10'] >= entry_threshold and qty > 0:# and (pos <= 0):
+        if data[sym]['momentum'] >= momentum_threshold and \
+                        data[sym]['dEMA_10'] >= entry_threshold and qty > 0:
             orders.append(Order(sym, qty, type='market'))
-        elif data[sym]['momentum'] <= 0 and data[sym]['dEMA_10'] <= -entry_threshold and qty < 0:# and (pos >= 0):
+        elif data[sym]['momentum'] <= -momentum_threshold and \
+                        data[sym]['dEMA_10'] <= -entry_threshold and qty < 0:
             orders.append(Order(sym, qty, type='market'))
         elif data[sym]['dEMA_10'] >= exit_threshold and (pos < 0):
             orders.append(Order(sym, min(-pos, qty*5), type='market'))

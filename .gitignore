@@ -1,5 +1,6 @@
 # custom
 data
+!data/xle_01_05_12/xle_01_05_12.csv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
