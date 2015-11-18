@@ -1,6 +1,7 @@
 import time
 import sys
 import requests
+import os
 from calendar import monthrange
 from selenium import webdriver
 from selenium.webdriver.support.ui import Select
@@ -25,8 +26,9 @@ for month in range(12):
         print("downloading " + str(month+1) + '/' + str(day+1) + '/'+sys.argv[1])
         driver.get('https://wrds-web.wharton.upenn.edu/wrds/ds/taq/cqm/index.cfm')
 
+        ticker = " ".join(sys.argv[2:]).strip()
         company_codes = driver.find_element_by_id('code-lookup')
-        company_codes.send_keys(" ".join(sys.argv[2:]))
+        company_codes.send_keys(ticker)
 
         # variables
         driver.find_element_by_id('var_BID').click()
@@ -78,8 +80,10 @@ for month in range(12):
                 pass
 
         # download results
-        # TODO - make format {TICKER}_%m_%d_%y.csv
-        filename = 'TICKER_' + sys.argv[1] + str(month+1).zfill(2) + str(day+1).zfill(2) + '.csv'
+        filename = ticker.replace(" ", "_") + '_' + str(month+1).zfill(2) + '_' + str(day+1).zfill(2) + '_' + sys.argv[1][2:]
+        filename = filename + os.path.sep + filename + '.csv'
+        if not os.path.exists(os.path.dirname(filename)):
+            os.makedirs(os.path.dirname(filename))
         with open(filename, 'wb') as handle:
             if result is not None:
                 all_cookies = driver.get_cookies()
