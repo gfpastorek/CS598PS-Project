@@ -55,8 +55,12 @@ def _clean_quotes(data, sec=None, start_hour=9, start_min=30, end_hour=15, end_m
             })
         return data.reset_index().rename(columns={'level_1': 'TIME_M'})
 
-# TODO - come up with a cooler way to label data
+
+# TODO - come up with a cooler way to label data, optimally adjust the half-life
 def _label_data(data, label_hls=(10, 40, 100)):
+
+    data['price'] = (data['BID']*data['BIDSIZ'] + data['ASK']*data['ASKSIZ']) / (data['BIDSIZ'] + data['ASKSIZ'])
+    data['log_returns'] = data['log_returns'] = np.concatenate([[0], np.diff(np.log(data['price']))])
 
     # TODO - which halflife to use? Kalman filter?
     for hl in label_hls:
@@ -69,13 +73,13 @@ def _label_data(data, label_hls=(10, 40, 100)):
     return data
 
 
-def get_data(ticker, year, month, day, bar_width='second', label_hls=[10, 40, 100]):
+def get_data(ticker, year, month, day, bar_width='second', label_halflives=[10, 40, 100]):
     filename = "{}_{}".format(ticker, dt.datetime(year, month, day).strftime("%m_%d_%y"))
     root_dir = os.path.realpath(os.path.dirname(os.getcwd()))
     fpath = os.path.join(root_dir, 'data', filename, '{}.csv'.format(filename))
     data = pd.read_csv(fpath, parse_dates=['TIME_M'], date_parser=convert_time)
     data = _clean_quotes(data, bar_width=bar_width)
-    data = _label_data(data, label_hls=label_hls)
+    data = _label_data(data, label_hls=label_halflives)
     return data
 
 

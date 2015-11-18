@@ -7,7 +7,7 @@ import os
 from pykalman import KalmanFilter
 
 from backtest.backtest import backtest, Order
-
+from data.data_utils import get_data
 
 # XLE XOM CVX SLB KMI EOG COP OXY PXD VLO USO
 
@@ -45,36 +45,6 @@ def plot_series(data, sec1n, start_hour=4, start_min=0, end_hour=20, end_min=0):
     plt.show()
 
 
-def clean_quotes(data, sec1n, start_hour=9, start_min=30, end_hour=15, end_min=30, bar_width='second'):
-
-    data = data.reset_index()
-
-    data = data[data['BID'] != 0]
-    data = data[data['ASK'] != 0]
-    data = data[data['NATBBO_IND'] == 1]
-
-    minute_bars = (bar_width == 'minute')
-
-    data = data[data['TIME_M'] >= dt.datetime(2012,1,3,start_hour,start_min,0,0)]
-    data = data[data['TIME_M'] <= dt.datetime(2012,1,3,end_hour,end_min,0,0)]
-
-    sec1 = data[data['SYM_ROOT'] == sec1n]
-
-    sec1 = sec1.reset_index().drop(['DATE', 'SYM_SUFFIX', 'index'], 1)
-
-    if bar_width is None:
-        return sec1
-    else:
-        sec1_seconds = \
-            sec1.set_index('TIME_M')\
-            .groupby(['SYM_ROOT', lambda x: dt.datetime(x.year, x.month, x.day, x.hour, x.minute, 0 if minute_bars else x.second, 0)])\
-            .agg({
-                'ASK': 'mean',
-                'BID': 'mean',
-                'ASKSIZ': 'max',
-                'BIDSIZ': 'max'
-            })
-        return sec1_seconds.reset_index().rename(columns={'level_1': 'TIME_M'})
 
 prev_momentum = {}
 
@@ -130,26 +100,7 @@ def magic_strategy(data, positions):
     return orders
 
 
-#os.chdir(os.path.join(os.getcwd(), 'python'))
-root_dir = os.path.realpath(os.path.dirname(os.getcwd()))
-#fname = 'xle_jan_3_12'
-#fname = 'xle_01_05_12'
-fname = 'xle_01_06_12'
-#fname = 'xle_01_07_12'
-fpath = os.path.join(root_dir, 'data', fname, '{}.csv'.format(fname))
-data = pd.read_csv(fpath, parse_dates=['TIME_M'], date_parser=convert_time)
-
-data = clean_quotes(data, 'XLE', 9, 30, 15, 30, bar_width='second')
-#data = clean_quotes(data, 'XLE', 9, 30, 15, 30, bar_width=None)
-
-data['price'] = (data['BID'] + data['ASK'])/2
-data['log_price'] = np.log((data['BID'] + data['ASK'])/2)
-
-#hls = [10, 20, 30, 40, 50, 60, 70, 80, 90]
-
-#hls = [3, 5, 10, 20, 30]
-
-#hls = [10, 20, 30, 40]
+data = get_data('XLE', 2012, 1, 5, bar_width='second', label_halflives=[10, 40, 100])
 
 hls = [10, 40, 100]
 
@@ -157,11 +108,9 @@ for hl in hls:
     data.ix[:, 'EMA_{}'.format(hl)] = pd.ewma(data['price'], halflife=hl)
     data['dEMA_{}'.format(hl)] = 0
     #data.ix[1:, 'dEMA_{}'.format(hl)] = np.diff(pd.ewma(data['price'], halflife=hl))
-    data.ix[1:, 'dEMA_{}'.format(hl)] = pd.ewma(np.diff(data['log_price']), halflife=hl)
+    data.ix[1:, 'dEMA_{}'.format(hl)] = pd.ewma(np.diff(data['price']), halflife=hl)
     data['dEMA_std_{}'.format(hl)] = pd.rolling_std(data['dEMA_{}'.format(hl)], 1000)
 data['dEMA'] = np.mean([data['dEMA_{}'.format(hl)] for hl in hls], axis=0)
-
-data['log_returns'] = np.concatenate([[0], np.diff(data['log_price'])])
 
 kf = KalmanFilter(transition_matrices=[1],
                   observation_matrices = [1],
@@ -174,14 +123,6 @@ data['kf'], _ = kf.filter(data['price'].values)
 
 
 return_windows = [2, 3, 4, 5, 10, 20, 50, 100]
-
-for hl in hls:
-    data['log_returns_{}+'.format(hl)] = np.concatenate([(pd.ewma(data['log_returns'].values[::-1], hl))[:0:-1], [None]])
-    data['log_returns_{}-'.format(hl)] = np.concatenate([[0], pd.ewma(data['log_returns'], hl).values[:-1]])
-    data['log_returns_std_{}+'.format(hl)] = np.concatenate([(pd.rolling_std(data['log_returns'].values[::-1], 2*hl))[:0:-1], [None]])
-    data['log_returns_std_{}-'.format(hl)] = np.concatenate([[0], pd.rolling_std(data['log_returns'], 2*hl).values[:-1]])
-    data['nlog_returns_{}+'.format(hl)] = data['log_returns_{}+'.format(hl)] / (1+data['log_returns_std_{}+'.format(hl)])
-    data['nlog_returns_{}-'.format(hl)] = data['log_returns_{}-'.format(hl)] / (1+data['log_returns_std_{}-'.format(hl)])
 
 data = data.fillna(0)
 
@@ -231,7 +172,6 @@ ax2.plot(data['TIME_M'].values, (data['ASK']-data['BID']).values)
 axes[1].plot(data['TIME_M'].values, data['log_returns_10+'].values, label='lr_10+')
 axes[1].plot(data['TIME_M'].values, data['log_returns_40+'].values, label='lr_40+')
 axes[1].plot(data['TIME_M'].values, data['log_returns_100+'].values, label='lr_100+')
-axes[1].plot(data['TIME_M'].values, data['kf_lr+'].values, label='kf_lr+')
 
 plt.legend()
 
