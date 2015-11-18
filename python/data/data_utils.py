@@ -7,6 +7,7 @@ import os
 
 # DATE,TIME_M,SYM_ROOT,SYM_SUFFIX,BID,BIDSIZ,ASK,ASKSIZ,BIDEX,ASKEX,NATBBO_IND
 
+
 def convert_time(d):
     h, m, s = d.split(':')
     s, ms = map(int, s.split('.'))
@@ -25,6 +26,18 @@ def get_test_data():
 
 
 def _clean_quotes(data, sec=None, start_hour=9, start_min=30, end_hour=15, end_min=30, bar_width='second'):
+    """
+    Cleans data by merging to common time intervals (if bar_width != None), slicing the start/end time,
+    filtering to a specific security, and only showing NBBO quotes
+    :param data:
+    :param sec:
+    :param start_hour:
+    :param start_min:
+    :param end_hour:
+    :param end_min:
+    :param bar_width:
+    :return:
+    """
 
     data = data.reset_index()
 
@@ -57,7 +70,7 @@ def _clean_quotes(data, sec=None, start_hour=9, start_min=30, end_hour=15, end_m
         return data.reset_index().rename(columns={'level_1': 'TIME_M'})
 
 
-def get_data(ticker, year, month, day, bar_width='second', label_halflives=[10, 40, 100]):
+def get_data(ticker, year, month, day, bar_width='second'):
     filename = "{}_{}".format(ticker, dt.datetime(year, month, day).strftime("%m_%d_%y"))
     root_dir = os.path.realpath(os.path.dirname(os.getcwd()))
     fpath = os.path.join(root_dir, 'data', filename, '{}.csv'.format(filename))
