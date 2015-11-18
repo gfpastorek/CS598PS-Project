@@ -8,42 +8,9 @@ from pykalman import KalmanFilter
 
 from backtest.backtest import backtest, Order
 from data.data_utils import get_data
+import data.features as features
 
 # XLE XOM CVX SLB KMI EOG COP OXY PXD VLO USO
-
-# DATE,TIME_M,SYM_ROOT,SYM_SUFFIX,BID,BIDSIZ,ASK,ASKSIZ,BIDEX,ASKEX,NATBBO_IND
-
-def convert_time(d):
-    h, m, s = d.split(':')
-    s, ms = map(int, s.split('.'))
-    return dt.datetime(2012, 1, 3, int(h), int(m), int(s), int(ms)*1000)
-
-
-# FEATURES/TRANSFORMATIONS
-
-# data = get_data('AAPL', start, end)
-#
-#
-# def make_ohlc(df, params):
-# 	price_header = params['price_header']
-# 	df.resample('1s', how={''})
-
-def plot_series(data, sec1n, start_hour=4, start_min=0, end_hour=20, end_min=0):
-    data = data[data['TIME_M'] >= dt.datetime(2012,1,3,start_hour,start_min,0,0)]
-    data = data[data['TIME_M'] <= dt.datetime(2012,1,3,end_hour,end_min,0,0)]
-
-    sec1 = data[data['SYM_ROOT'] == sec1n]
-
-    sec1_seconds = \
-        sec1.set_index('TIME_M')\
-        .groupby(lambda x: dt.datetime(x.year, x.month, x.day, x.hour, x.minute, x.second, 0))\
-        .mean()
-
-    sec1_seconds['BID'].plot()
-    sec1_seconds['ASK'].plot()
-
-    plt.show()
-
 
 
 prev_momentum = {}
@@ -104,13 +71,12 @@ data = get_data('XLE', 2012, 1, 5, bar_width='second', label_halflives=[10, 40, 
 
 hls = [10, 40, 100]
 
-for hl in hls:
-    data.ix[:, 'EMA_{}'.format(hl)] = pd.ewma(data['price'], halflife=hl)
-    data['dEMA_{}'.format(hl)] = 0
-    #data.ix[1:, 'dEMA_{}'.format(hl)] = np.diff(pd.ewma(data['price'], halflife=hl))
-    data.ix[1:, 'dEMA_{}'.format(hl)] = pd.ewma(np.diff(data['price']), halflife=hl)
-    data['dEMA_std_{}'.format(hl)] = pd.rolling_std(data['dEMA_{}'.format(hl)], 1000)
-data['dEMA'] = np.mean([data['dEMA_{}'.format(hl)] for hl in hls], axis=0)
+features.label_data(data, label_hls=hls)
+
+features.add_ema(data, halflives=hls)
+features.add_dema(data, halflives=hls)
+features.add_momentum(data, halflives=hls)
+
 
 kf = KalmanFilter(transition_matrices=[1],
                   observation_matrices = [1],
@@ -121,26 +87,7 @@ kf = KalmanFilter(transition_matrices=[1],
 
 data['kf'], _ = kf.filter(data['price'].values)
 
-
-return_windows = [2, 3, 4, 5, 10, 20, 50, 100]
-
 data = data.fillna(0)
-
-data['std'] = pd.rolling_std(data['log_returns'], 1000)
-
-f = lambda window: plt.scatter(data['log_returns'], data['log_returns_{}+'.format(window)])
-g = lambda w1, w2: plt.scatter(data['log_returns_{}-'.format(w1)], data['log_returns_{}+'.format(w2)])
-g2 = lambda w1, w2, min_w1: plt.scatter(
-    data[np.abs(data['log_returns_{}-'.format(w1)].fillna(0)) >= min_w1]['log_returns_{}-'.format(w1)],
-    data[np.abs(data['log_returns_{}-'.format(w1)].fillna(0)) >= min_w1]['log_returns_{}+'.format(w2)])
-
-g3 = lambda w1, w2, min_w1: plt.scatter(
-    np.abs(data[np.abs(data['log_returns_{}-'.format(w1)].fillna(0)) >= min_w1]['log_returns_{}-'.format(w1)]),
-    np.sign(data[np.abs(data['log_returns_{}-'.format(w1)].fillna(0)) >= min_w1]['log_returns_{}-'.format(w1)])*data[np.abs(data['log_returns_{}-'.format(w1)].fillna(0)) >= min_w1]['log_returns_{}+'.format(w2)])
-
-
-#data['momentum'] = data['dEMA']
-data['momentum'] = data['EMA_10'] - data['EMA_40']
 
 #pnl_history, order_history = backtest(data, test_strategy, transaction_costs=0.005)
 pnl_history, order_history = backtest(data, magic_strategy, transaction_costs=0.005)
@@ -166,8 +113,6 @@ axes[0].plot(short_order_times, short_order_prices, 'v', ms=8, color='r')
 
 ax2 = axes[0].twinx()
 ax2.plot(data['TIME_M'].values, (data['ASK']-data['BID']).values)
-#ax2.plot(data['TIME_M'].values, data['ASKSIZ'].values)
-#ax2.plot(data['TIME_M'].values, data['BIDSIZ'].values)
 
 axes[1].plot(data['TIME_M'].values, data['log_returns_10+'].values, label='lr_10+')
 axes[1].plot(data['TIME_M'].values, data['log_returns_40+'].values, label='lr_40+')

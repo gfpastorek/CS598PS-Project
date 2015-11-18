@@ -5,6 +5,7 @@ import os
 
 # TODO: filter by time (maybe in get_data? --> pass in start_time and end_time for intraday limits)
 
+# DATE,TIME_M,SYM_ROOT,SYM_SUFFIX,BID,BIDSIZ,ASK,ASKSIZ,BIDEX,ASKEX,NATBBO_IND
 
 def convert_time(d):
     h, m, s = d.split(':')
@@ -56,30 +57,12 @@ def _clean_quotes(data, sec=None, start_hour=9, start_min=30, end_hour=15, end_m
         return data.reset_index().rename(columns={'level_1': 'TIME_M'})
 
 
-# TODO - come up with a cooler way to label data, optimally adjust the half-life
-def _label_data(data, label_hls=(10, 40, 100)):
-
-    data['price'] = (data['BID']*data['BIDSIZ'] + data['ASK']*data['ASKSIZ']) / (data['BIDSIZ'] + data['ASKSIZ'])
-    data['log_returns'] = data['log_returns'] = np.concatenate([[0], np.diff(np.log(data['price']))])
-
-    # TODO - which halflife to use? Kalman filter?
-    for hl in label_hls:
-        data['log_returns_{}+'.format(hl)] = \
-            np.concatenate([(pd.ewma(data['log_returns'].values[::-1], hl))[:0:-1], [0]])
-        # TODO - how to get the EWMA decay to match the rolling_std window?
-        data['log_returns_std_{}+'.format(hl)] = \
-            np.concatenate([(pd.rolling_std(data['log_returns'].values[::-1], 2*hl))[:0:-1], [0]])
-
-    return data
-
-
 def get_data(ticker, year, month, day, bar_width='second', label_halflives=[10, 40, 100]):
     filename = "{}_{}".format(ticker, dt.datetime(year, month, day).strftime("%m_%d_%y"))
     root_dir = os.path.realpath(os.path.dirname(os.getcwd()))
     fpath = os.path.join(root_dir, 'data', filename, '{}.csv'.format(filename))
     data = pd.read_csv(fpath, parse_dates=['TIME_M'], date_parser=convert_time)
     data = _clean_quotes(data, bar_width=bar_width)
-    data = _label_data(data, label_hls=label_halflives)
     return data
 
 
