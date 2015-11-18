@@ -32,6 +32,17 @@ def get_test_data():
     return df
 
 
+def get_data(filename):
+
+    
+
+    for hl in hls:
+        data['log_returns_{}+'.format(hl)] = np.concatenate([(pd.ewma(data['log_returns'].values[::-1], hl))[:0:-1], [None]])
+        data['log_returns_{}-'.format(hl)] = np.concatenate([[0], pd.ewma(data['log_returns'], hl).values[:-1]])
+        data['log_returns_std_{}+'.format(hl)] = np.concatenate([(pd.rolling_std(data['log_returns'].values[::-1], 2*hl))[:0:-1], [None]])
+        data['log_returns_std_{}-'.format(hl)] = np.concatenate([[0], pd.rolling_std(data['log_returns'], 2*hl).values[:-1]])
+
+
 def get_data(ticker, start, end):
     """
 
