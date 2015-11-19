@@ -16,9 +16,9 @@ def apply_transformations():
     raise NotImplemented("TODO")
 
 
-def ohlc(data, params):
+def add_ohlc(data, params):
     """
-    Adds open/high/low/close/volume columns to the data
+    Adds open/high/low/close/volume columns to the datautils
     :param data:
     :param params:
     :return:
@@ -45,7 +45,7 @@ def ohlc(data, params):
 
 def get_ohlc(data, params):
     """
-    Return ohlc data (instead of adding columns to original data)
+    Return ohlc datautils (instead of adding columns to original datautils)
     :param data:
     :param params:
     :return:
@@ -62,13 +62,7 @@ def get_ohlc(data, params):
     return ohlc
 
 
-def percent_change(data, params):
-    """
-
-    :param data:
-    :param params:
-    :return:
-    """
+def add_percent_change(data, params):
     input_column = parse_params(params, 'input_column', 'HIGH')
     output_column = parse_params(params, 'output_column', 'PCT_CHANGE')
     periods = parse_params(params, 'periods', 1)
@@ -77,19 +71,21 @@ def percent_change(data, params):
     data[output_column] = pct
 
 
-from data_utils import get_test_data
-
-
-class TestTransformations(unittest.TestCase):
-    def test_ohlc(self):
-        data = get_test_data()
-        ohlc_params = {'freq': '5min'}
-        ohlc(data, ohlc_params)
-
-    def test_percent_return(self):
-        ohlc_params = {'freq': '5min'}
-        data = get_ohlc(get_test_data(), ohlc_params)
-        pct_return_params = {'input_column': 'HIGH',
-                             'output_column': 'HIGH_PCT_CHANGE'}
-        percent_change(data, pct_return_params)
-        # print data.head(5)
+# Tests
+# from data_utils import get_test_data
+#
+#
+# class TestTransformations(unittest.TestCase):
+#
+#     def test_ohlc(self):
+#         datautils = get_test_data()
+#         ohlc_params = {'freq': '5min'}
+#         add_ohlc(datautils, ohlc_params)
+#
+#     def test_percent_return(self):
+#         ohlc_params = {'freq': '5min'}
+#         datautils = get_ohlc(get_test_data(), ohlc_params)
+#         pct_return_params = {'input_column': 'HIGH',
+#                              'output_column': 'HIGH_PCT_CHANGE'}
+#         add_percent_change(datautils, pct_return_params)
+#         # print datautils.head(5)
