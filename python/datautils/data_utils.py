@@ -84,7 +84,7 @@ def _clean_quotes(data, sec=None, start_hour=9, start_min=30, end_hour=15, end_m
 def get_data(ticker, year, month, day, bar_width='second'):
     filename = "{}_{}".format(ticker.lower(), dt.datetime(year, month, day).strftime("%m_%d_%y"))
     root_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.getcwd())))
-    fpath = os.path.join(root_dir, 'data', filename, '{}.csv'.format(filename))
+    fpath = os.path.join(root_dir, 'data', filename, '{}_quotes.csv'.format(filename))
     data = pd.read_csv(fpath, parse_dates=[['DATE', 'TIME_M']], date_parser=_convert_time)
     data = _clean_quotes(data, bar_width=bar_width)
     return data

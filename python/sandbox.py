@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 import os
 from pykalman import KalmanFilter
 
-from backtest.backtest import backtest, Order
-from data.data_utils import get_data
-import data.features as features
+from backtest import backtest, Order
+from datautils.data_utils import get_data
+import datautils.features as features
 
 # XLE XOM CVX SLB KMI EOG COP OXY PXD VLO USO
 
@@ -70,13 +70,15 @@ def magic_strategy(data, positions):
 
 data = get_data('XLE', 2012, 1, 5, bar_width='second', label_halflives=[10, 40, 100])
 
+print(data.head(5))
+
 hls = [10, 40, 100]
 
 features.label_data(data, label_hls=hls)
 
 features.add_ema(data, halflives=hls)
 features.add_dema(data, halflives=hls)
-features.add_momentum(data, halflives=hls)
+#features.add_momentum(data, halflives=hls)
 
 
 kf = KalmanFilter(transition_matrices=[1],
@@ -95,12 +97,12 @@ pnl_history, order_history = backtest(data, magic_strategy, transaction_costs=0.
 
 fig, axes = plt.subplots(nrows=3)
 
-axes[0].plot(data['TIME_M'].values, data['price'].values)
+axes[0].plot(data['DATE_TIME'].values, data['price'].values)
 
 for hl in hls:
-    axes[0].plot(data['TIME_M'].values, data['EMA_{}'.format(hl)].values)
+    axes[0].plot(data['DATE_TIME'].values, data['EMA_{}'.format(hl)].values)
 
-axes[0].plot(data['TIME_M'].values, data['kf'].values)
+axes[0].plot(data['DATE_TIME'].values, data['kf'].values)
 
 long_orders = filter(lambda x: x[2] > 0, order_history)
 short_orders = filter(lambda x: x[2] < 0, order_history)
@@ -113,15 +115,15 @@ axes[0].plot(long_order_times, long_order_prices, '^', ms=8, color='g')
 axes[0].plot(short_order_times, short_order_prices, 'v', ms=8, color='r')
 
 ax2 = axes[0].twinx()
-ax2.plot(data['TIME_M'].values, (data['ASK']-data['BID']).values)
+ax2.plot(data['DATE_TIME'].values, (data['ASK_PRICE']-data['BID_PRICE']).values)
 
-axes[1].plot(data['TIME_M'].values, data['log_returns_10+'].values, label='lr_10+')
-axes[1].plot(data['TIME_M'].values, data['log_returns_40+'].values, label='lr_40+')
-axes[1].plot(data['TIME_M'].values, data['log_returns_100+'].values, label='lr_100+')
+axes[1].plot(data['DATE_TIME'].values, data['log_returns_10+'].values, label='lr_10+')
+axes[1].plot(data['DATE_TIME'].values, data['log_returns_40+'].values, label='lr_40+')
+axes[1].plot(data['DATE_TIME'].values, data['log_returns_100+'].values, label='lr_100+')
 
 plt.legend()
 
-axes[2].plot(data['TIME_M'].values, pnl_history[1:], label='pnl')
+axes[2].plot(data['DATE_TIME'].values, pnl_history[1:], label='pnl')
 
 plt.legend()
 

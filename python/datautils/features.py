@@ -38,6 +38,7 @@ def add_ema(data, halflives=[10, 40, 100], colname='EMA'):
 def add_momentum(data, halflives=[10, 40, 100], colname='momentum'):
     add_ema(data, halflives=halflives)
     data[colname] = 0
-    for i in xrange(0, len(data)):
-        ranking = stats.rankdata(data[['EMA_{}'.format(hl) for hl in halflives]].iloc[i])
-        data.ix[i, colname] = spatial.distance.hamming(ranking, range(1, len(halflives)+1))
+    for hl1 in halflives:
+        for hl2 in halflives:
+            if hl2 < hl1:
+                data[colname] += data['EMA_{}'.format(hl1)] - data['EMA_{}'.format(hl2)]

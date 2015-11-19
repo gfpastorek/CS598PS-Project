@@ -76,8 +76,7 @@ features.label_data(data, label_hls=hls)
 
 features.add_ema(data, halflives=hls)
 features.add_dema(data, halflives=hls)
-#features.add_momentum(data, halflives=hls)
-
+features.add_momentum(data, halflives=hls)
 
 kf = KalmanFilter(transition_matrices=[1],
                   observation_matrices = [1],
@@ -91,7 +90,7 @@ data['kf'], _ = kf.filter(data['price'].values)
 data = data.fillna(0)
 
 #pnl_history, order_history = backtest(data, test_strategy, transaction_costs=0.005)
-pnl_history, order_history = backtest(data, magic_strategy, transaction_costs=0.005)
+pnl_history, order_history = backtest(data, magic_strategy, transaction_costs=0.000, slippage_rate=0.25, delay_fill=True)
 
 fig, axes = plt.subplots(nrows=3)
 
@@ -115,15 +114,14 @@ axes[0].plot(short_order_times, short_order_prices, 'v', ms=8, color='r')
 ax2 = axes[0].twinx()
 ax2.plot(data['DATE_TIME'].values, (data['ASK_PRICE']-data['BID_PRICE']).values)
 
-axes[1].plot(data['DATE_TIME'].values, data['log_returns_10+'].values, label='lr_10+')
-axes[1].plot(data['DATE_TIME'].values, data['log_returns_40+'].values, label='lr_40+')
-axes[1].plot(data['DATE_TIME'].values, data['log_returns_100+'].values, label='lr_100+')
+axes[1].plot(data['DATE_TIME'].values, data['momentum'].values, label='momentum')
 
-plt.legend()
+#axes[1].plot(data['DATE_TIME'].values, data['log_returns_10+'].values, label='lr_10+')
+#axes[1].plot(data['DATE_TIME'].values, data['log_returns_40+'].values, label='lr_40+')
+#axes[1].plot(data['DATE_TIME'].values, data['log_returns_100+'].values, label='lr_100+')
+#plt.legend()
 
-axes[2].plot(data['DATE_TIME'].values, pnl_history[1:], label='pnl')
-
-plt.legend()
+axes[2].plot(data['DATE_TIME'].values, pnl_history, label='pnl')
 
 plt.show()
 

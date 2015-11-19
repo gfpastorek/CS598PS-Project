@@ -19,7 +19,7 @@ class Order(object):
         next_order_id += 1
 
 
-def backtest(data, strategy, transaction_costs=0.005, delay_fill=False):
+def backtest(data, strategy, transaction_costs=0.005, slippage_rate=0.25, delay_fill=False):
     """
     description: backtest a trading strategy
     inputs:
@@ -40,7 +40,7 @@ def backtest(data, strategy, transaction_costs=0.005, delay_fill=False):
     positions = {}
     security_data = {}
 
-    slippage = lambda price, qty, _book_qty: price + 0.01/4.0 * (qty/_book_qty + 1)
+    slippage = lambda price, qty, _book_qty: price + 0.01 * slippage_rate * (qty/_book_qty + 1)
 
     def check_signals(quotes):
         # run strategy
