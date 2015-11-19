@@ -36,6 +36,7 @@ def _clean_quotes(data, sec=None, start_hour=9, start_min=30, end_hour=15, end_m
     :param end_hour:
     :param end_min:
     :param bar_width:
+
     :return:
     """
 
