@@ -9,7 +9,7 @@ def generate_features():
 
 def label_data(data, label_hls=(10, 40, 100)):
 
-    data['price'] = (data['BID']*data['BIDSIZ'] + data['ASK']*data['ASKSIZ']) / (data['BIDSIZ'] + data['ASKSIZ'])
+    data['price'] = (data['BID_PRICE']*data['BID_SIZE'] + data['ASK_PRICE']*data['ASK_SIZE']) / (data['BID_SIZE'] + data['ASK_SIZE'])
     data['log_returns'] = data['log_returns'] = np.concatenate([[0], np.diff(np.log(data['price']))])
 
     # TODO - which halflife to use? Kalman filter?
