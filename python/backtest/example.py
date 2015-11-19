@@ -90,7 +90,7 @@ data['kf'], _ = kf.filter(data['price'].values)
 data = data.fillna(0)
 
 #pnl_history, order_history = backtest(data, test_strategy, transaction_costs=0.005)
-pnl_history, order_history = backtest(data, magic_strategy, transaction_costs=0.000, slippage_rate=0.25, delay_fill=True)
+pnl_history, order_history = backtest(data, magic_strategy, transaction_costs=0.005, slippage_rate=0.25, delay_fill=True)
 
 fig, axes = plt.subplots(nrows=3)
 

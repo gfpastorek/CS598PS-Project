@@ -81,7 +81,7 @@ def _clean_quotes(data, sec=None, start_hour=9, start_min=30, end_hour=15, end_m
     return data.reset_index().rename(columns={'level_1': 'DATE_TIME'})
 
 
-def get_data(ticker, year, month, day, bar_width='second'):
+def get_quotes(ticker, year, month, day, bar_width='second'):
     filename = "{}_{}".format(ticker.lower(), dt.datetime(year, month, day).strftime("%m_%d_%y"))
     root_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.getcwd())))
     fpath = os.path.join(root_dir, 'data', filename, '{}_quotes.csv'.format(filename))
