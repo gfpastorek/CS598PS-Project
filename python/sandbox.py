@@ -5,127 +5,188 @@ import datetime as dt
 import matplotlib.pyplot as plt
 import os
 from pykalman import KalmanFilter
-
+import statsmodels.api as sm
 from backtest import backtest, Order
 from datautils.data_utils import get_data
 import datautils.features as features
 
-# XLE XOM CVX SLB KMI EOG COP OXY PXD VLO USO
+from sklearn import cross_validation, svm
 
 
-prev_momentum = {}
-
-count = 0
-
-def test_strategy(data, positions):
-    orders = []
-    momentum_threshold = 0.0001
-    entry_threshold = 0.000035
-    exit_threshold = 0.00002
-    global count
-    count += 1
-    if count < 30:
-        return[]
-    for sym in data:
-        pos = positions.get(sym, 0)
-        qty = 10*int(data[sym]['dEMA_10']/entry_threshold) - pos
-        if data[sym]['momentum'] >= momentum_threshold and \
-                        data[sym]['dEMA_10'] >= entry_threshold and qty > 0:
-            orders.append(Order(sym, qty, type='market'))
-        elif data[sym]['momentum'] <= -momentum_threshold and \
-                        data[sym]['dEMA_10'] <= -entry_threshold and qty < 0:
-            orders.append(Order(sym, qty, type='market'))
-        elif data[sym]['dEMA_10'] >= exit_threshold and (pos < 0):
-            orders.append(Order(sym, min(-pos, qty*5), type='market'))
-        elif data[sym]['dEMA_10'] <= -exit_threshold and (pos > 0):
-            orders.append(Order(sym, max(-pos, qty*5), type='market'))
-        prev_momentum[sym] = data[sym]['momentum']
-    return orders
-
-
-def magic_strategy(data, positions):
-    orders = []
-    indicator = 'log_returns_100+'
-    entry_threshold = 0.000005
-    exit_threshold = 0.000001
-
-    global count
-    count += 1
-    if count < 30:
-        return[]
-
-    base_qty = 10
-    max_pos = 100
-
-    for sym in data:
-        pos = positions.get(sym, 0)
-        qty = base_qty*int(data[sym][indicator]/entry_threshold) - pos
-        if abs(qty) > 0 and np.sign(qty) == np.sign(data[sym][indicator]) and abs(pos+qty) <= max_pos:
-            orders.append(Order(sym, qty, type='market'))
-        elif abs(data[sym][indicator]) < exit_threshold:
-            orders.append(Order(sym, -pos, type='market'))
-
-    return orders
-
-
-data = get_data('XLE', 2012, 1, 5, bar_width='second', label_halflives=[10, 40, 100])
-
-print(data.head(5))
+quotes, trades = get_data('XLE', 2012, 1, 5, bar_width='second')
 
 hls = [10, 40, 100]
 
-features.label_data(data, label_hls=hls)
+features.label_data(quotes, label_hls=hls)
 
-features.add_ema(data, halflives=hls)
-features.add_dema(data, halflives=hls)
-#features.add_momentum(data, halflives=hls)
+features.add_ema(quotes, halflives=hls)
+features.add_dema(quotes, halflives=hls)
+features.add_momentum(quotes, halflives=hls)
+features.add_log_return_ema(quotes, halflives=hls)
+features.add_size_diff(quotes)
+
+quotes = quotes.fillna(0)
+
+def svm_output(scores, y, K):
+    print """
+                                    SVM Results
+    ==============================================================================
+    """
+    print pd.DataFrame({'%': np.array([len(y[y == -1]),
+                                len(y[y == 0]),
+                                len(y[y == 1])])/len(y)},
+                       index=[-1, 0, 1])
+    print pd.DataFrame({'values': [(len(y)/K)*(K-1), np.mean(scores), np.std(scores)]},
+                 index=['Training Size / Fold', 'Mean', 'STD'])
+    print pd.DataFrame({'Score': scores}, index=range(1, K+1))
+    print "=============================================================================="
 
 
-kf = KalmanFilter(transition_matrices=[1],
-                  observation_matrices = [1],
-                  initial_state_mean = data['price'].iloc[0],
-                  initial_state_covariance = 1,
-                  observation_covariance=1,
-                  transition_covariance=.01)
+"""
+Linear regression [features] -> log_returns_100+
+Entry threshold is ~ 0.000005 for log_returns_100+
+"""
+hl = 100
+reg = sm.OLS(quotes['log_returns_{}+'.format(hl)],
+             quotes[['momentum', 'dEMA_10', 'dEMA_40', 'dEMA_100', 'size_diff',
+                     'log_returns_10-', 'log_returns_40-', 'log_returns_100-',
+                     'log_returns_std_10-', 'log_returns_std_40-', 'log_returns_std_100-']]).fit()
+print reg.summary()
+"""
+                            OLS Regression Results
+==============================================================================
+Dep. Variable:       log_returns_100+   R-squared:                       0.057
+Model:                            OLS   Adj. R-squared:                  0.057
+Method:                 Least Squares   F-statistic:                     73.55
+Date:                Thu, 19 Nov 2015   Prob (F-statistic):          2.27e-161
+Time:                        14:57:19   Log-Likelihood:             1.3985e+05
+No. Observations:               13301   AIC:                        -2.797e+05
+Df Residuals:                   13290   BIC:                        -2.796e+05
+Df Model:                          11
+Covariance Type:            nonrobust
+========================================================================================
+                           coef    std err          t      P>|t|      [95.0% Conf. Int.]
+----------------------------------------------------------------------------------------
+momentum              2.025e-05   1.64e-06     12.374      0.000       1.7e-05  2.35e-05
+dEMA_10                  0.0037      0.000     10.046      0.000         0.003     0.004
+dEMA_40                  0.0031      0.001      5.505      0.000         0.002     0.004
+dEMA_100                -0.0020      0.000     -4.100      0.000        -0.003    -0.001
+size_diff             2.333e-09   1.23e-09      1.898      0.058      -7.6e-11  4.74e-09
+log_returns_10-          0.1471      0.012     11.928      0.000         0.123     0.171
+log_returns_40-         -1.0289      0.085    -12.105      0.000        -1.195    -0.862
+log_returns_100-         0.8560      0.083     10.293      0.000         0.693     1.019
+log_returns_std_10-      0.0068      0.002      3.329      0.001         0.003     0.011
+log_returns_std_40-     -0.0275      0.003     -8.123      0.000        -0.034    -0.021
+log_returns_std_100-     0.0226      0.003      7.855      0.000         0.017     0.028
+==============================================================================
+Omnibus:                      755.460   Durbin-Watson:                   0.030
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):             3175.099
+Skew:                          -0.051   Prob(JB):                         0.00
+Kurtosis:                       5.391   Cond. No.                     9.93e+07
+==============================================================================
+"""
 
-data['kf'], _ = kf.filter(data['price'].values)
+"""
+Notes:
+-is there a non-linear relationship with momentum and the dEMA_* features?
+"""
 
-data = data.fillna(0)
 
-#pnl_history, order_history = backtest(data, test_strategy, transaction_costs=0.005)
-pnl_history, order_history = backtest(data, magic_strategy, transaction_costs=0.005)
 
-fig, axes = plt.subplots(nrows=3)
+"""
+Linear regression classification, quotes filtered by threshold
+"""
+thresh = 0.000005
+hl = 100
+quotes['label'] = 0
+quotes.ix[quotes['log_returns_100+'] > thresh, 'label'] = 1
+quotes.ix[quotes['log_returns_100+'] < -thresh, 'label'] = -1
 
-axes[0].plot(data['DATE_TIME'].values, data['price'].values)
+#filtered_quotes = quotes[abs(quotes['log_returns_{}+'.format(hl)]) > thresh]
 
-for hl in hls:
-    axes[0].plot(data['DATE_TIME'].values, data['EMA_{}'.format(hl)].values)
+reg = sm.OLS(quotes['log_returns_{}+'.format(hl)],
+             quotes[['momentum', 'dEMA_10', 'dEMA_40', 'dEMA_100']]).fit()
 
-axes[0].plot(data['DATE_TIME'].values, data['kf'].values)
 
-long_orders = filter(lambda x: x[2] > 0, order_history)
-short_orders = filter(lambda x: x[2] < 0, order_history)
-long_order_times = map(lambda x: x[0], long_orders)
-short_order_times = map(lambda x: x[0], short_orders)
-long_order_prices = map(lambda x: x[3], long_orders)
-short_order_prices = map(lambda x: x[3], short_orders)
 
-axes[0].plot(long_order_times, long_order_prices, '^', ms=8, color='g')
-axes[0].plot(short_order_times, short_order_prices, 'v', ms=8, color='r')
 
-ax2 = axes[0].twinx()
-ax2.plot(data['DATE_TIME'].values, (data['ASK_PRICE']-data['BID_PRICE']).values)
+"""
+SVM, 3-class 5-fold CV, auto-class weights
+"""
+thresh = 0.000005
+hl = 100
+K = 5
+quotes['label'] = 0
+quotes.ix[quotes['log_returns_100+'] > thresh, 'label'] = 1
+quotes.ix[quotes['log_returns_100+'] < -thresh, 'label'] = -1
 
-axes[1].plot(data['DATE_TIME'].values, data['log_returns_10+'].values, label='lr_10+')
-axes[1].plot(data['DATE_TIME'].values, data['log_returns_40+'].values, label='lr_40+')
-axes[1].plot(data['DATE_TIME'].values, data['log_returns_100+'].values, label='lr_100+')
+X = quotes[['momentum', 'dEMA_10', 'dEMA_40', 'dEMA_100']]
+y = quotes['label']
 
-plt.legend()
+clf = svm.SVC(kernel='linear', C=1, class_weight='auto')
+scores = cross_validation.cross_val_score(clf, X, y, cv=K)
 
-axes[2].plot(data['DATE_TIME'].values, pnl_history[1:], label='pnl')
+svm_output(scores, y, K)
 
-plt.legend()
+"""
+                                SVM Results
+==============================================================================
 
-plt.show()
+           %
+-1  0.202992
+ 0  0.606421
+ 1  0.190587
+                            values
+Training Size / Fold  10640.800000
+Mean                      0.482536
+STD                       0.112570
+      Score
+1  0.265314
+2  0.497368
+3  0.581203
+4  0.554887
+5  0.513910
+==============================================================================
+"""
 
+
+"""
+SVM, 2-class 5-fold CV, filtered
+"""
+thresh = 0.000005/10
+hl = 100
+K = 5
+quotes['label'] = 0
+quotes.ix[quotes['log_returns_100+'] > thresh, 'label'] = 1
+quotes.ix[quotes['log_returns_100+'] < -thresh, 'label'] = -1
+filtered_quotes = quotes[quotes['label'] != 0]
+
+X = filtered_quotes [['momentum', 'dEMA_10', 'dEMA_40', 'dEMA_100']]
+y = filtered_quotes ['label']
+
+clf = svm.SVC(kernel='linear', C=1)
+scores = cross_validation.cross_val_score(clf, X, y, cv=K)
+
+svm_output(scores, y, K)
+
+"""
+                                SVM Results
+==============================================================================
+          %
+-1  0.47138
+ 0  0.00000
+ 1  0.52862
+                           values
+Training Size / Fold  9867.200000
+Mean                     0.528620
+STD                      0.000086
+
+
+      Score
+1  0.528577
+2  0.528577
+3  0.528577
+4  0.528577
+5  0.528792
+==============================================================================
+"""

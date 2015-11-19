@@ -42,3 +42,20 @@ def add_momentum(data, halflives=[10, 40, 100], colname='momentum'):
         for hl2 in halflives:
             if hl2 < hl1:
                 data[colname] += data['EMA_{}'.format(hl1)] - data['EMA_{}'.format(hl2)]
+
+
+def add_log_return_ema(data, halflives=(10, 40, 100)):
+
+    data['price'] = (data['BID_PRICE']*data['BID_SIZE'] + data['ASK_PRICE']*data['ASK_SIZE']) / (data['BID_SIZE'] + data['ASK_SIZE'])
+    data['log_returns'] = data['log_returns'] = np.concatenate([[0], np.diff(np.log(data['price']))])
+
+    for hl in halflives:
+        data['log_returns_{}-'.format(hl)] = \
+            np.concatenate([[0], (pd.ewma(data['log_returns'].values[:-1], hl))])
+        # TODO - how to get the EWMA decay to match the rolling_std window?
+        data['log_returns_std_{}-'.format(hl)] = \
+            np.concatenate([[0], (pd.rolling_std(data['log_returns'].values[:-1], 2*hl))])
+
+
+def add_size_diff(data):
+    data['size_diff'] = data['BID_SIZE'] - data['ASK_SIZE']

@@ -13,7 +13,10 @@ import datautils.features as features
 from pykalman import KalmanFilter
 
 
-
+"""
+os.chdir(os.path.join(os.getcwd(), 'python'))
+sys.path.append(os.getcwd())
+"""
 # XLE XOM CVX SLB KMI EOG COP OXY PXD VLO USO
 
 
@@ -96,7 +99,7 @@ quotes = quotes.fillna(0)
 #pnl_history, order_history = backtest(data, test_strategy, transaction_costs=0.005)
 pnl_history, order_history = backtest(quotes, trades, magic_strategy, transaction_costs=0.005, slippage_rate=0.25, delay_fill=True)
 
-fig, axes = plt.subplots(nrows=3)
+fig, axes = plt.subplots(nrows=4)
 
 axes[0].plot(quotes['DATE_TIME'].values, quotes['price'].values)
 
@@ -120,12 +123,12 @@ ax2.plot(quotes['DATE_TIME'].values, (quotes['ASK_PRICE']-quotes['BID_PRICE']).v
 
 axes[1].plot(quotes['DATE_TIME'].values, quotes['momentum'].values, label='momentum')
 
-#axes[1].plot(data['DATE_TIME'].values, data['log_returns_10+'].values, label='lr_10+')
-#axes[1].plot(data['DATE_TIME'].values, data['log_returns_40+'].values, label='lr_40+')
-#axes[1].plot(data['DATE_TIME'].values, data['log_returns_100+'].values, label='lr_100+')
-#plt.legend()
+axes[2].plot(quotes['DATE_TIME'].values, quotes['log_returns_10+'].values, label='lr_10+')
+axes[2].plot(quotes['DATE_TIME'].values, quotes['log_returns_40+'].values, label='lr_40+')
+axes[2].plot(quotes['DATE_TIME'].values, quotes['log_returns_100+'].values, label='lr_100+')
+plt.legend()
 
-axes[2].plot(quotes['DATE_TIME'].values, pnl_history, label='pnl')
+axes[3].plot(quotes['DATE_TIME'].values, pnl_history, label='pnl')
 
 plt.show()
 
