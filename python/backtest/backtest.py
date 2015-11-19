@@ -2,6 +2,7 @@ from __future__ import division
 import numpy as np
 import pandas as pd
 import os
+from datetime import timedelta
 
 
 next_order_id = 1
@@ -19,11 +20,11 @@ class Order(object):
         next_order_id += 1
 
 
-def backtest(data, strategy, transaction_costs=0.005, slippage_rate=0.25, delay_fill=False):
+def backtest(quotes, trades, strategy, transaction_costs=0.005, slippage_rate=0.25, delay_fill=False):
     """
     description: backtest a trading strategy
     inputs:
-        @datautils - market datautils as a Pandas DataFrame, columns - [DATE_TIME, SYM, BID_PRICE, BID_SIZE, ASK_PRICE, ASK_SIZE]
+        @quotes - quotes as a Pandas DataFrame, columns - [DATE_TIME, SYM, BID_PRICE, BID_SIZE, ASK_PRICE, ASK_SIZE]
         @strategy - callable function taking two parameters
                         'datautils': dictionary of symbol(string) -> security_data(pd.Series)
                         'positions': dictionary of symbol(string) -> position(int)
@@ -39,17 +40,20 @@ def backtest(data, strategy, transaction_costs=0.005, slippage_rate=0.25, delay_
     order_history = []
     positions = {}
     security_data = {}
+    recent_trades = [[]]
 
     slippage = lambda price, qty, _book_qty: price + 0.01 * slippage_rate * (qty/_book_qty + 1)
 
     def check_signals(quotes):
         # run strategy
         if len(security_data) > 0 and delay_fill:
-            orders = strategy(security_data, positions)
+            orders = strategy(security_data, recent_trades[0], positions)
         for i in xrange(0, len(quotes)):
             security_data[quotes.iloc[i]['SYM']] = quotes.iloc[i]
+        time = quotes.iloc[0]['DATE_TIME']
+        recent_trades[0] = trades[(trades['DATE_TIME'] >= time) & (trades['DATE_TIME'] < time + timedelta(seconds=1))]
         if not delay_fill:
-            orders = strategy(security_data, positions)
+            orders = strategy(security_data, recent_trades[0], positions)
         # process orders
         for order in orders:
             sdata = security_data[order.sym]
@@ -57,7 +61,7 @@ def backtest(data, strategy, transaction_costs=0.005, slippage_rate=0.25, delay_
             price = sdata['BID_PRICE'] if order.qty > 0 else sdata['ASK_PRICE']
             book_qty = sdata['BID_SIZE'] if order.qty > 0 else sdata['ASK_SIZE']
             price = slippage(price, order.qty, book_qty)
-            order_history.append((quotes.iloc[0]['DATE_TIME'], order.sym, order.qty, price))
+            order_history.append((time, order.sym, order.qty, price))
             cash[0] -= order.qty * price
             cash[0] -= transaction_costs * abs(order.qty)
         portfolio_value = np.sum(
@@ -65,6 +69,6 @@ def backtest(data, strategy, transaction_costs=0.005, slippage_rate=0.25, delay_
              positions])
         pnl_history.append(cash[0] + portfolio_value)
 
-    data.groupby('DATE_TIME').apply(check_signals)
+    quotes.groupby('DATE_TIME').apply(check_signals)
 
     return pnl_history[1:], order_history

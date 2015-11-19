@@ -26,10 +26,7 @@ def filter_data_by_time(data, start_time, end_time):
     """
     Removes data before start_time and end_time
     """
-    # data = data[data['DATE_TIME_M'] >= start_time]
-    # data = data[data['DATE_TIME_M'] <= end_time]
-    data = data.between_time(start_time, end_time, include_start=True, include_end=True)
-    return data
+    return data.between_time(start_time, end_time, include_start=True, include_end=True)
 
 
 def filter_invalid_quotes(data):
@@ -42,25 +39,13 @@ def filter_invalid_quotes(data):
     return data
 
 
-def _clean_quotes(data, sec=None, start_hour=9, start_min=30, end_hour=15, end_min=30, bar_width='second'):
-    """
-
-    :param data:
-    :param sec:
-    :param start_hour:
-    :param start_min:
-    :param end_hour:
-    :param end_min:
-    :param bar_width:
-    :return:
-    """
+def _clean_quotes(data, start_hour=9, start_min=30, end_hour=15, end_min=30, bar_width='second'):
 
     data = filter_invalid_quotes(data)
+    data = data.drop(['SYM_SUFFIX', 'NATBBO_IND'], 1)
+    data.columns = ['DATE_TIME', 'SYM', 'BID_PRICE', 'BID_SIZE', 'ASK_PRICE', 'ASK_SIZE']
 
-    data = data.set_index('DATE_TIME_M', drop=True)
-    data.index.names = ['DATE_TIME']
-    data.columns = ['SYM', 'SYM_SUFFIX', 'BID_PRICE', 'BID_SIZE', 'ASK_PRICE', 'ASK_SIZE', 'NATBBO_IND']
-    data['DATE_TIME'] = data.index.values
+    data = data.set_index('DATE_TIME')
 
     start_time = dt.time(start_hour, start_min, 0, 0)
     end_time = dt.time(end_hour, end_min, 0, 0)
@@ -71,13 +56,28 @@ def _clean_quotes(data, sec=None, start_hour=9, start_min=30, end_hour=15, end_m
     else:
         minute_bars = (bar_width == 'minute')
         data = \
-            data.groupby(['SYM', lambda x: dt.datetime(x.year, x.month, x.day, x.hour, x.minute, 0 if minute_bars else x.second, 0)])\
+            data.groupby(['SYM', lambda x: dt.datetime(x.year, x.month, x.day, x.hour, x.minute,
+                                                       0 if minute_bars else x.second, 0)])\
             .agg({
                  'ASK_PRICE': 'mean',
                  'BID_PRICE': 'mean',
                  'ASK_SIZE': 'max',
                  'BID_SIZE': 'max'
              })
+    return data.reset_index().rename(columns={'level_1': 'DATE_TIME'})
+
+
+def _clean_trades(data, start_hour=9, start_min=30, end_hour=15, end_min=30):
+
+    data = data.drop('SYM_SUFFIX', 1)
+    data.columns = ['DATE_TIME', 'SYM', 'SIZE', 'PRICE']
+
+    data = data.set_index('DATE_TIME')
+
+    start_time = dt.time(start_hour, start_min, 0, 0)
+    end_time = dt.time(end_hour, end_min, 0, 0)
+    data = filter_data_by_time(data, start_time, end_time)
+
     return data.reset_index().rename(columns={'level_1': 'DATE_TIME'})
 
 
@@ -88,6 +88,21 @@ def get_quotes(ticker, year, month, day, bar_width='second'):
     data = pd.read_csv(fpath, parse_dates=[['DATE', 'TIME_M']], date_parser=_convert_time)
     data = _clean_quotes(data, bar_width=bar_width)
     return data
+
+
+def get_trades(ticker, year, month, day):
+    filename = "{}_{}".format(ticker.lower(), dt.datetime(year, month, day).strftime("%m_%d_%y"))
+    root_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.getcwd())))
+    fpath = os.path.join(root_dir, 'data', filename, '{}_trades.csv'.format(filename))
+    data = pd.read_csv(fpath, parse_dates=[['DATE', 'TIME_M']], date_parser=_convert_time)
+    data = _clean_trades(data)
+    return data
+
+
+def get_data(ticker, year, month, day, bar_width='second'):
+    quotes = get_quotes(ticker, year, month, day, bar_width=bar_width)
+    trades = get_trades(ticker, year, month, day)
+    return quotes, trades
 
 
 import unittest
