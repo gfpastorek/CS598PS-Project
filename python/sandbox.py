@@ -12,7 +12,6 @@ import datautils.features as features
 
 from sklearn import cross_validation, svm
 
-
 quotes, trades = get_data('XLE', 2012, 1, 5, bar_width='second')
 
 hls = [10, 40, 100]
@@ -94,6 +93,7 @@ Kurtosis:                       5.391   Cond. No.                     9.93e+07
 """
 Notes:
 -is there a non-linear relationship with momentum and the dEMA_* features?
+-negative betas for dEMA_100 and log_returns_40-, implying mean reversion instead of momentum
 """
 
 
@@ -102,7 +102,6 @@ Notes:
 """
 SVM, 3-class 5-fold CV, auto-class weights
 """
-
 thresh = 0.000005
 hl = 100
 K = 5
@@ -113,9 +112,10 @@ quotes.ix[quotes['log_returns_100+'] < -thresh, 'label'] = -1
 X = quotes[feature_names]
 y = quotes['label']
 
-clf = svm.SVC(kernel='linear', C=1, class_weight='auto')
+clf = svm.LinearSVC(C=1, class_weight='auto')
 scores = cross_validation.cross_val_score(clf, X, y, cv=K)
 
+clf = svm.LinearSVC(C=1, class_weight='auto')
 clf.fit(X, y)
 w = clf.coef_
 svm_output(scores, w, y, K)
@@ -170,10 +170,10 @@ filtered_quotes = quotes[quotes['label'] != 0]
 X = filtered_quotes[feature_names]
 y = filtered_quotes['label']
 
-clf = svm.SVC(kernel='linear', C=1)
+clf = svm.LinearSVC(C=1, class_weight='auto')
 scores = cross_validation.cross_val_score(clf, X, y, cv=K)
 
-clf = svm.SVC(kernel='linear', C=1)
+clf = svm.LinearSVC(C=1, class_weight='auto')
 clf.fit(X, y)
 w = clf.coef_
 
@@ -182,21 +182,32 @@ svm_output(scores, w, y, K)
 """
                                 SVM Results
 ==============================================================================
+
+                       weight0
+momentum             -0.044016
+dEMA_10              -0.512767
+dEMA_40               0.606887
+dEMA_100              0.604581
+size_diff             0.013293
+log_returns_10-      -0.009578
+log_returns_40-      -0.001886
+log_returns_100-      0.006633
+log_returns_std_10-  -0.010336
+log_returns_std_40-   0.001043
+log_returns_std_100-  0.029651
           %
 -1  0.47138
  0  0.00000
  1  0.52862
                            values
 Training Size / Fold  9867.200000
-Mean                     0.528620
-STD                      0.000086
-
-
+Mean                     0.482491
+STD                      0.029527
       Score
-1  0.528577
-2  0.528577
-3  0.528577
-4  0.528577
-5  0.528792
+1  0.481151
+2  0.476692
+3  0.494122
+4  0.434536
+5  0.525953
 ==============================================================================
 """
