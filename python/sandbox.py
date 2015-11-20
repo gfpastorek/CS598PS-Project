@@ -7,22 +7,28 @@ import os
 from pykalman import KalmanFilter
 import statsmodels.api as sm
 from backtest.backtest import backtest, Order
-from datautils.data_utils import get_data
+from datautils.data_utils import get_data, get_more_data
 import datautils.features as features
 
 from sklearn import cross_validation, svm
 
-quotes, trades = get_data('XLE', 2012, 1, 5, bar_width='second')
+#quotes, trades = get_data('XLE', 2012, 1, 5, bar_width='second')
+data = get_more_data('XLE', 2012, 1, 5, days=3, bar_width='second')
 
 hls = [10, 40, 100]
 
-features.label_data(quotes, label_hls=hls)
+for quotes, trades in data:
+    features.label_data(quotes, label_hls=hls)
+    features.add_ema(quotes, halflives=hls)
+    features.add_dema(quotes, halflives=hls)
+    features.add_momentum(quotes, halflives=hls)
+    features.add_log_return_ema(quotes, halflives=hls)
+    features.add_size_diff(quotes)
 
-features.add_ema(quotes, halflives=hls)
-features.add_dema(quotes, halflives=hls)
-features.add_momentum(quotes, halflives=hls)
-features.add_log_return_ema(quotes, halflives=hls)
-features.add_size_diff(quotes)
+quotes_list, trades_list = zip(*data)
+
+quotes = pd.concat(quotes_list)
+trades = pd.concat(trades_list)
 
 feature_names = ['momentum', 'dEMA_10', 'dEMA_40', 'dEMA_100', 'size_diff',
                  'log_returns_10-', 'log_returns_40-', 'log_returns_100-',

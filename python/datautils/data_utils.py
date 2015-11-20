@@ -101,10 +101,35 @@ def get_trades(ticker, year, month, day):
     return data
 
 
+def date_iter(year, month, day, days=1):
+    yield year, month, day
+    start_date = dt.datetime(year, month, day)
+    for cur_date in (start_date + dt.timedelta(n) for n in range(days)):
+        yield cur_date.year, cur_date.month, cur_date.day
+
+
 def get_data(ticker, year, month, day, bar_width='second'):
     quotes = get_quotes(ticker, year, month, day, bar_width=bar_width)
     trades = get_trades(ticker, year, month, day)
     return quotes, trades
+
+
+def get_more_data(tickers, year, month, day, days=1, bar_width='second', max_count=10e4):
+    data = []
+    c = 0
+    if type(tickers) == str:
+        tickers = [tickers]
+    for y, m, d in date_iter(year, month, day, days=days):
+        if c > days or c > max_count:
+            break
+        for ticker in tickers:
+            try:
+                quotes, trades = get_data(ticker, y, m, d, bar_width=bar_width)
+                data.append((quotes, trades))
+                c += 1
+            except IOError:
+                continue
+    return data
 
 
 import unittest
