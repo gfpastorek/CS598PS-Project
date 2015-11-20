@@ -1,6 +1,7 @@
 import unittest
 import pandas as pd
 import numpy as np
+import datetime as dt
 from scipy import stats, spatial
 
 
@@ -60,3 +61,22 @@ def add_log_return_ema(data, halflives=(10, 40, 100)):
 
 def add_size_diff(data):
     data['size_diff'] = data['BID_SIZE'] - data['ASK_SIZE']
+
+
+def add_trade_momentum(data, trades, bar_width='second'):
+    minute_bars = (bar_width == 'second')
+    trades = trades.set_index('DATE_TIME')
+    trades['PRICExSIZE'] = trades['PRICE'] * trades['SIZE']
+    trades = \
+        trades.groupby(['SYM', lambda x: dt.datetime(x.year, x.month, x.day, x.hour, x.minute,
+                                                       0 if minute_bars else x.second, 0)])\
+        .agg({
+                 'PRICE': 'mean',
+                 'SIZE': 'sum',
+                 'PRICExSIZE': 'mean'
+             })
+    trades['PRICE'] = trades['PRICExSIZE'] / trades['SIZE']
+    trades = trades.reset_index().rename(columns={'level_1': 'DATE_TIME'})
+    trades = trades.drop('PRICExSIZE', 1)
+    data = pd.join(data, trades, index=['SYM', 'DATE_TIME'])
+    return data.reset_index()
