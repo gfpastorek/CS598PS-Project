@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from scipy import stats, spatial
 
+
 def generate_features():
     raise NotImplemented("TODO")
 

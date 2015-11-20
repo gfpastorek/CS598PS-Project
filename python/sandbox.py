@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import os
 from pykalman import KalmanFilter
 import statsmodels.api as sm
-from backtest import backtest, Order
+from backtest.backtest import backtest, Order
 from datautils.data_utils import get_data
 import datautils.features as features
 
@@ -25,13 +25,20 @@ features.add_momentum(quotes, halflives=hls)
 features.add_log_return_ema(quotes, halflives=hls)
 features.add_size_diff(quotes)
 
+feature_names = ['momentum', 'dEMA_10', 'dEMA_40', 'dEMA_100', 'size_diff',
+                 'log_returns_10-', 'log_returns_40-', 'log_returns_100-',
+                 'log_returns_std_10-', 'log_returns_std_40-', 'log_returns_std_100-']
+
 quotes = quotes.fillna(0)
 
-def svm_output(scores, y, K):
+
+def svm_output(scores, w, y, K):
+    w = w / np.linalg.norm(w)
     print """
-                                    SVM Results
-    ==============================================================================
+                                SVM Results
+==============================================================================
     """
+    print pd.DataFrame({'weight{}'.format(i): w[i] for i in xrange(0, len(w))}, index=feature_names)
     print pd.DataFrame({'%': np.array([len(y[y == -1]),
                                 len(y[y == 0]),
                                 len(y[y == 1])])/len(y)},
@@ -48,9 +55,7 @@ Entry threshold is ~ 0.000005 for log_returns_100+
 """
 hl = 100
 reg = sm.OLS(quotes['log_returns_{}+'.format(hl)],
-             quotes[['momentum', 'dEMA_10', 'dEMA_40', 'dEMA_100', 'size_diff',
-                     'log_returns_10-', 'log_returns_40-', 'log_returns_100-',
-                     'log_returns_std_10-', 'log_returns_std_40-', 'log_returns_std_100-']]).fit()
+             quotes[feature_names]).fit()
 print reg.summary()
 """
                             OLS Regression Results
@@ -93,25 +98,10 @@ Notes:
 
 
 
-"""
-Linear regression classification, quotes filtered by threshold
-"""
-thresh = 0.000005
-hl = 100
-quotes['label'] = 0
-quotes.ix[quotes['log_returns_100+'] > thresh, 'label'] = 1
-quotes.ix[quotes['log_returns_100+'] < -thresh, 'label'] = -1
-
-#filtered_quotes = quotes[abs(quotes['log_returns_{}+'.format(hl)]) > thresh]
-
-reg = sm.OLS(quotes['log_returns_{}+'.format(hl)],
-             quotes[['momentum', 'dEMA_10', 'dEMA_40', 'dEMA_100']]).fit()
-
-
-
 
 """
 SVM, 3-class 5-fold CV, auto-class weights
+"""
 """
 thresh = 0.000005
 hl = 100
@@ -120,32 +110,48 @@ quotes['label'] = 0
 quotes.ix[quotes['log_returns_100+'] > thresh, 'label'] = 1
 quotes.ix[quotes['log_returns_100+'] < -thresh, 'label'] = -1
 
-X = quotes[['momentum', 'dEMA_10', 'dEMA_40', 'dEMA_100']]
+X = quotes[feature_names]
 y = quotes['label']
 
 clf = svm.SVC(kernel='linear', C=1, class_weight='auto')
 scores = cross_validation.cross_val_score(clf, X, y, cv=K)
 
-svm_output(scores, y, K)
+clf.fit(X, y)
+w = clf.coef_
+svm_output(scores, w, y, K)
+"""
 
 """
+
                                 SVM Results
 ==============================================================================
 
+                       weight1   weight2   weight3
+momentum              0.538066 -0.484641 -0.677849
+dEMA_10              -0.007214  0.069543  0.074101
+dEMA_40              -0.028418 -0.034758 -0.007410
+dEMA_100             -0.043508 -0.041361  0.002492
+size_diff             0.000348 -0.000595 -0.000426
+log_returns_10-      -0.000266  0.000995  0.001279
+log_returns_40-      -0.000252  0.000535  0.000760
+log_returns_100-     -0.000490 -0.000220  0.000254
+log_returns_std_10-   0.003873  0.000813 -0.003216
+log_returns_std_40-   0.003125 -0.000521 -0.003750
+log_returns_std_100-  0.000381 -0.002426 -0.002934
            %
 -1  0.202992
  0  0.606421
  1  0.190587
                             values
 Training Size / Fold  10640.800000
-Mean                      0.482536
-STD                       0.112570
+Mean                      0.432914
+STD                       0.103482
       Score
-1  0.265314
-2  0.497368
-3  0.581203
-4  0.554887
-5  0.513910
+1  0.248403
+2  0.420301
+3  0.518045
+4  0.542857
+5  0.434962
 ==============================================================================
 """
 
@@ -161,13 +167,17 @@ quotes.ix[quotes['log_returns_100+'] > thresh, 'label'] = 1
 quotes.ix[quotes['log_returns_100+'] < -thresh, 'label'] = -1
 filtered_quotes = quotes[quotes['label'] != 0]
 
-X = filtered_quotes [['momentum', 'dEMA_10', 'dEMA_40', 'dEMA_100']]
-y = filtered_quotes ['label']
+X = filtered_quotes[feature_names]
+y = filtered_quotes['label']
 
 clf = svm.SVC(kernel='linear', C=1)
 scores = cross_validation.cross_val_score(clf, X, y, cv=K)
 
-svm_output(scores, y, K)
+clf = svm.SVC(kernel='linear', C=1)
+clf.fit(X, y)
+w = clf.coef_
+
+svm_output(scores, w, y, K)
 
 """
                                 SVM Results
