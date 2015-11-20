@@ -102,7 +102,7 @@ Notes:
 """
 SVM, 3-class 5-fold CV, auto-class weights
 """
-"""
+
 thresh = 0.000005
 hl = 100
 K = 5
@@ -119,7 +119,7 @@ scores = cross_validation.cross_val_score(clf, X, y, cv=K)
 clf.fit(X, y)
 w = clf.coef_
 svm_output(scores, w, y, K)
-"""
+
 
 """
 
