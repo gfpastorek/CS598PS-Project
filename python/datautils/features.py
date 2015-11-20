@@ -78,5 +78,5 @@ def add_trade_momentum(data, trades, bar_width='second'):
     trades['PRICE'] = trades['PRICExSIZE'] / trades['SIZE']
     trades = trades.reset_index().rename(columns={'level_1': 'DATE_TIME'})
     trades = trades.drop('PRICExSIZE', 1)
-    data = pd.join(data, trades, index=['SYM', 'DATE_TIME'])
+    data = pd.join(data, trades, index=['SYM', 'DATE_TIME'], how='left')
     return data.reset_index()
