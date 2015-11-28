@@ -64,7 +64,7 @@ def add_size_diff(data):
 
 
 def add_trade_momentum(data, trades, bar_width='second'):
-    minute_bars = (bar_width == 'second')
+    minute_bars = (bar_width != 'second')
     trades = trades.set_index('DATE_TIME')
     trades['PRICExSIZE'] = trades['PRICE'] * trades['SIZE']
     trades = \
@@ -73,10 +73,11 @@ def add_trade_momentum(data, trades, bar_width='second'):
         .agg({
                  'PRICE': 'mean',
                  'SIZE': 'sum',
-                 'PRICExSIZE': 'mean'
+                 'PRICExSIZE': 'sum'
              })
-    trades['PRICE'] = trades['PRICExSIZE'] / trades['SIZE']
+    trades['MEAN_TRADE_PRICE'] = trades['PRICExSIZE'] / trades['SIZE']
     trades = trades.reset_index().rename(columns={'level_1': 'DATE_TIME'})
-    trades = trades.drop('PRICExSIZE', 1)
-    data = pd.join(data, trades, index=['SYM', 'DATE_TIME'], how='left')
-    return data.reset_index()
+    data[['MEAN_TRADE_PRICE', 'SIZE']] = data.merge(trades, on=['SYM', 'DATE_TIME'], how='left')[['MEAN_TRADE_PRICE', 'SIZE']]
+    data['trade_momentum'] = data['MEAN_TRADE_PRICE'] - data['price']   # TODO - normalize
+    data.drop('MEAN_TRADE_PRICE', axis=1, inplace=True)
+    data.reset_index(inplace=True)

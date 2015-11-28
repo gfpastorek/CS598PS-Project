@@ -23,18 +23,21 @@ for quotes, trades in data:
     features.add_dema(quotes, halflives=hls)
     features.add_momentum(quotes, halflives=hls)
     features.add_log_return_ema(quotes, halflives=hls)
-    features.add_size_diff(quotes)
+    features.add_trade_momentum(quotes, trades, bar_width='second')
 
 quotes_list, trades_list = zip(*data)
 
 quotes = pd.concat(quotes_list)
 trades = pd.concat(trades_list)
 
-feature_names = ['momentum', 'dEMA_10', 'dEMA_40', 'dEMA_100', 'size_diff',
+feature_names = ['momentum', 'dEMA_10', 'dEMA_40', 'dEMA_100', 'trade_momentum',
                  'log_returns_10-', 'log_returns_40-', 'log_returns_100-',
-                 'log_returns_std_10-', 'log_returns_std_40-', 'log_returns_std_100-']
+                 'log_returns_std_10-', 'log_returns_std_40-']
 
 quotes = quotes.fillna(0)
+
+# normalize features
+quotes[feature_names] = (quotes[feature_names] - quotes[feature_names].mean()) / quotes[feature_names].std()
 
 
 def svm_output(scores, w, y, K):
@@ -65,34 +68,33 @@ print reg.summary()
 """
                             OLS Regression Results
 ==============================================================================
-Dep. Variable:       log_returns_100+   R-squared:                       0.052
-Model:                            OLS   Adj. R-squared:                  0.052
-Method:                 Least Squares   F-statistic:                     193.4
-Date:                Fri, 20 Nov 2015   Prob (F-statistic):               0.00
-Time:                        14:58:25   Log-Likelihood:             4.0805e+05
-No. Observations:               38750   AIC:                        -8.161e+05
-Df Residuals:                   38739   BIC:                        -8.160e+05
-Df Model:                          11
+Dep. Variable:       log_returns_100+   R-squared:                       0.046
+Model:                            OLS   Adj. R-squared:                  0.046
+Method:                 Least Squares   F-statistic:                     186.7
+Date:                Fri, 27 Nov 2015   Prob (F-statistic):               0.00
+Time:                        17:42:55   Log-Likelihood:             4.0792e+05
+No. Observations:               38750   AIC:                        -8.158e+05
+Df Residuals:                   38740   BIC:                        -8.157e+05
+Df Model:                          10
 Covariance Type:            nonrobust
-========================================================================================
-                           coef    std err          t      P>|t|      [95.0% Conf. Int.]
-----------------------------------------------------------------------------------------
-momentum              2.056e-05   9.82e-07     20.938      0.000      1.86e-05  2.25e-05
-dEMA_10                  0.0026      0.000     12.160      0.000         0.002     0.003
-dEMA_40                  0.0015      0.000      4.539      0.000         0.001     0.002
-dEMA_100                 0.0006      0.000      2.101      0.036      4.08e-05     0.001
-size_diff             3.259e-09   7.25e-10      4.494      0.000      1.84e-09  4.68e-09
-log_returns_10-          0.0859      0.007     11.746      0.000         0.072     0.100
-log_returns_40-         -0.6591      0.051    -13.023      0.000        -0.758    -0.560
-log_returns_100-         0.5532      0.049     11.206      0.000         0.456     0.650
-log_returns_std_10-      0.0029      0.001      2.419      0.016         0.001     0.005
-log_returns_std_40-     -0.0292      0.002    -15.348      0.000        -0.033    -0.025
-log_returns_std_100-     0.0260      0.002     16.192      0.000         0.023     0.029
+=======================================================================================
+                          coef    std err          t      P>|t|      [95.0% Conf. Int.]
+---------------------------------------------------------------------------------------
+momentum             2.115e-06   8.87e-08     23.837      0.000      1.94e-06  2.29e-06
+dEMA_10              2.444e-06   2.01e-07     12.171      0.000      2.05e-06  2.84e-06
+dEMA_40              8.757e-07   1.51e-07      5.810      0.000       5.8e-07  1.17e-06
+dEMA_100             2.293e-07   9.34e-08      2.454      0.014      4.62e-08  4.12e-07
+trade_momentum      -1.896e-07   3.33e-08     -5.697      0.000     -2.55e-07 -1.24e-07
+log_returns_10-      1.779e-06   1.59e-07     11.165      0.000      1.47e-06  2.09e-06
+log_returns_40-     -7.388e-06   5.69e-07    -12.995      0.000      -8.5e-06 -6.27e-06
+log_returns_100-     4.326e-06   3.76e-07     11.507      0.000      3.59e-06  5.06e-06
+log_returns_std_10-  1.135e-07   4.08e-08      2.781      0.005      3.35e-08  1.94e-07
+log_returns_std_40- -2.903e-07   4.19e-08     -6.929      0.000     -3.72e-07 -2.08e-07
 ==============================================================================
-Omnibus:                     7244.132   Durbin-Watson:                   0.036
-Prob(Omnibus):                  0.000   Jarque-Bera (JB):            67349.649
-Skew:                          -0.633   Prob(JB):                         0.00
-Kurtosis:                       9.333   Cond. No.                     1.00e+08
+Omnibus:                     7133.827   Durbin-Watson:                   0.033
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):            64620.219
+Skew:                          -0.627   Prob(JB):                         0.00
+Kurtosis:                       9.201   Cond. No.                         47.2
 ==============================================================================
 """
 
@@ -128,43 +130,46 @@ w = clf.coef_
 svm_output(scores, w, y, K)
 
 
+
+
+
 """
 
                                 SVM Results
 ==============================================================================
 
-                       weight0   weight1   weight2
-momentum              0.021698 -0.206676  0.221851
-dEMA_10              -0.076281  0.270374 -0.477989
-dEMA_40              -0.388825  0.136267  0.167016
-dEMA_100             -0.556140  0.250879  0.153617
-size_diff             0.000683 -0.001006  0.000412
-log_returns_10-      -0.001432  0.006081 -0.010255
-log_returns_40-      -0.003314  0.004019 -0.004411
-log_returns_100-     -0.006647  0.003676  0.000179
-log_returns_std_10-   0.036988 -0.034754  0.023471
-log_returns_std_40-   0.027537 -0.030182  0.024559
-log_returns_std_100- -0.006924 -0.012224  0.029614
+                      weight0   weight1   weight2
+momentum            -0.216936  0.111939  0.209902
+dEMA_10             -0.140160 -0.042351  0.197784
+dEMA_40             -0.137513  0.051638  0.157879
+dEMA_100            -0.082296  0.131149 -0.033857
+trade_momentum       0.009951 -0.005242 -0.004739
+log_returns_10-     -0.057481 -0.095249  0.150720
+log_returns_40-      0.239331  0.338320 -0.608134
+log_returns_100-    -0.103740 -0.199465  0.346236
+log_returns_std_10- -0.001515 -0.007009  0.002253
+log_returns_std_40-  0.060197 -0.090672  0.070939
            %
 -1  0.193910
  0  0.628852
  1  0.177239
                             values
 Training Size / Fold  31000.000000
-Mean                      0.536935
-STD                       0.055608
+Mean                      0.626425
+STD                       0.023286
       Score
-1  0.468585
-2  0.564185
-3  0.513353
-4  0.508453
-5  0.630098
+1  0.638369
+2  0.611663
+3  0.657335
+4  0.590012
+5  0.634744
 ==============================================================================
+
 """
 
 
 """
-SVM, 2-class 5-fold CV, filtered
+SVM, 2-class 5-fold CV, filtered, + vs -
 """
 thresh = 0.000005/10
 hl = 100
@@ -190,31 +195,85 @@ svm_output(scores, w, y, K)
                                 SVM Results
 ==============================================================================
 
-                       weight0
-momentum              0.337731
-dEMA_10              -0.322543
-dEMA_40               0.603920
-dEMA_100              0.644097
-size_diff             0.000409
-log_returns_10-      -0.010908
-log_returns_40-      -0.000358
-log_returns_100-      0.007543
-log_returns_std_10-  -0.020170
-log_returns_std_40-   0.007243
-log_returns_std_100-  0.041078
+                      weight0
+momentum             0.257510
+dEMA_10              0.245852
+dEMA_40              0.127780
+dEMA_100            -0.033758
+trade_momentum      -0.009124
+log_returns_10-      0.167149
+log_returns_40-     -0.750050
+log_returns_100-     0.513951
+log_returns_std_10- -0.012832
+log_returns_std_40-  0.029482
           %
 -1  0.48797
  0  0.00000
  1  0.51203
                             values
 Training Size / Fold  28695.200000
-Mean                      0.517272
-STD                       0.033043
+Mean                      0.556441
+STD                       0.004622
       Score
-1  0.506899
-2  0.478394
-3  0.541957
-4  0.491287
-5  0.567824
+1  0.561533
+2  0.558545
+3  0.555478
+4  0.548027
+5  0.558623
+==============================================================================
+"""
+
+
+"""
+SVM, 2-class 5-fold CV, filtered
+"""
+thresh = 0.000005/10
+hl = 100
+K = 5
+quotes['label'] = 0
+quotes.ix[abs(quotes['log_returns_100+']) > thresh, 'label'] = 1
+quotes.ix[abs(quotes['log_returns_100+']) < -thresh, 'label'] = -1
+
+X = quotes[feature_names]
+y = quotes['label']
+
+clf = svm.LinearSVC(C=1, class_weight='auto')
+scores = cross_validation.cross_val_score(clf, X, y, cv=K)
+
+clf = svm.LinearSVC(C=1, class_weight='auto')
+clf.fit(X, y)
+w = clf.coef_
+
+svm_output(scores, w, y, K)
+
+"""
+                                SVM Results
+==============================================================================
+
+                      weight0
+momentum            -0.647538
+dEMA_10             -0.172094
+dEMA_40             -0.478397
+dEMA_100             0.067800
+trade_momentum      -0.021980
+log_returns_10-      0.090825
+log_returns_40-      0.129755
+log_returns_100-    -0.385438
+log_returns_std_10- -0.067429
+log_returns_std_40-  0.372747
+           %
+-1  0.000000
+ 0  0.074348
+ 1  0.925652
+                            values
+Training Size / Fold  31000.000000
+Mean                      0.485953
+STD                       0.115670
+      Score
+1  0.566637
+2  0.542581
+3  0.521032
+4  0.543097
+5  0.256420
 ==============================================================================
 """

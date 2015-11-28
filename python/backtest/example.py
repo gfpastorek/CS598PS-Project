@@ -6,8 +6,10 @@ import datetime as dt
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 
+from sklearn import svm
+
 from backtest import backtest, Order
-from datautils.data_utils import get_data
+from datautils.data_utils import get_data, get_more_data
 import datautils.features as features
 
 from pykalman import KalmanFilter
@@ -23,6 +25,7 @@ sys.path.append(os.getcwd())
 prev_momentum = {}
 
 count = 0
+
 
 def test_strategy(quotes, trades, positions):
     orders = []
@@ -47,6 +50,35 @@ def test_strategy(quotes, trades, positions):
         elif quotes[sym]['dEMA_10'] <= -exit_threshold and (pos > 0):
             orders.append(Order(sym, max(-pos, qty*5), type='market'))
         prev_momentum[sym] = quotes[sym]['momentum']
+    return orders
+
+
+def svm_strategy(quotes, trades, positions, svm_clf):
+    orders = []
+    indicator = 'log_returns_100+'
+
+    feature_names = ['momentum', 'dEMA_10', 'dEMA_40', 'dEMA_100', 'trade_momentum',
+                 'log_returns_10-', 'log_returns_40-', 'log_returns_100-',
+                 'log_returns_std_10-', 'log_returns_std_40-']
+
+    global count
+    count += 1
+    if count < 30:
+        return[]
+
+    base_qty = 10
+    max_pos = 100
+
+    for sym in quotes:
+        pos = positions.get(sym, 0)
+        qty = base_qty - pos
+        feats = quotes[sym][feature_names].values
+        pred = svm_clf.predict(feats)
+        if abs(qty) > 0 and np.sign(qty) == np.sign(pred) and abs(pos+qty) <= max_pos:
+            orders.append(Order(sym, qty, type='market'))
+        #elif pred == 0:
+        #    orders.append(Order(sym, -pos, type='market'))
+
     return orders
 
 
@@ -75,29 +107,52 @@ def magic_strategy(quotes, trades, positions):
     return orders
 
 
-quotes, trades = get_data('XLE', 2012, 1, 5, bar_width='second')
+data = get_more_data('XLE', 2012, 1, 5, days=3, bar_width='second')
 
 hls = [10, 40, 100]
 
-features.label_data(quotes, label_hls=hls)
+for quotes, trades in data:
+    features.label_data(quotes, label_hls=hls)
+    features.add_ema(quotes, halflives=hls)
+    features.add_dema(quotes, halflives=hls)
+    features.add_momentum(quotes, halflives=hls)
+    features.add_log_return_ema(quotes, halflives=hls)
+    features.add_trade_momentum(quotes, trades, bar_width='second')
 
-features.add_ema(quotes, halflives=hls)
-features.add_dema(quotes, halflives=hls)
-features.add_momentum(quotes, halflives=hls)
+quotes_list, trades_list = zip(*data[:2])
+training_quotes = pd.concat(quotes_list)
+training_trades = pd.concat(trades_list)
 
-kf = KalmanFilter(transition_matrices=[1],
-                  observation_matrices = [1],
-                  initial_state_mean = quotes['price'].iloc[0],
-                  initial_state_covariance = 1,
-                  observation_covariance=1,
-                  transition_covariance=.01)
+quotes_list, trades_list = zip(*data[2:])
+testing_quotes = pd.concat(quotes_list)
+testing_trades = pd.concat(trades_list)
 
-quotes['kf'], _ = kf.filter(quotes['price'].values)
+feature_names = ['momentum', 'dEMA_10', 'dEMA_40', 'dEMA_100', 'trade_momentum',
+                 'log_returns_10-', 'log_returns_40-', 'log_returns_100-',
+                 'log_returns_std_10-', 'log_returns_std_40-']
 
-quotes = quotes.fillna(0)
+training_quotes = training_quotes.fillna(0)
+testing_quotes = testing_quotes.fillna(0)
 
-#pnl_history, order_history = backtest(data, test_strategy, transaction_costs=0.005)
-pnl_history, order_history = backtest(quotes, trades, magic_strategy, transaction_costs=0.005, slippage_rate=0.25, delay_fill=True)
+# normalize features
+# quotes[feature_names] = (quotes[feature_names] - quotes[feature_names].mean()) / quotes[feature_names].std()
+
+thresh = 0.000005
+label_hl = 100
+training_quotes['label'] = 0
+training_quotes.ix[training_quotes['log_returns_{}+'.format(label_hl)] > thresh, 'label'] = 1
+training_quotes.ix[training_quotes['log_returns_{}+'.format(label_hl)] < -thresh, 'label'] = -1
+
+X = training_quotes[feature_names]
+y = training_quotes['label']
+
+svm_clf = svm.LinearSVC(C=1, class_weight='auto')
+svm_clf.fit(X, y)
+
+#testing_quotes['label'] = svm_clf.predict(testing_quotes[feature_names].values)
+
+pnl_history, order_history = backtest(testing_quotes, testing_trades, svm_strategy,
+                                      transaction_costs=0.005, slippage_rate=0.25, delay_fill=True, svm_clf=svm_clf)
 
 fig, axes = plt.subplots(nrows=4)
 
@@ -105,8 +160,6 @@ axes[0].plot(quotes['DATE_TIME'].values, quotes['price'].values)
 
 for hl in hls:
     axes[0].plot(quotes['DATE_TIME'].values, quotes['EMA_{}'.format(hl)].values)
-
-axes[0].plot(quotes['DATE_TIME'].values, quotes['kf'].values)
 
 long_orders = filter(lambda x: x[2] > 0, order_history)
 short_orders = filter(lambda x: x[2] < 0, order_history)

@@ -20,7 +20,7 @@ class Order(object):
         next_order_id += 1
 
 
-def backtest(quotes, trades, strategy, transaction_costs=0.005, slippage_rate=0.25, delay_fill=False):
+def backtest(quotes, trades, strategy, transaction_costs=0.005, slippage_rate=0.25, delay_fill=False, *args, **kwargs):
     """
     description: backtest a trading strategy
     inputs:
@@ -47,7 +47,7 @@ def backtest(quotes, trades, strategy, transaction_costs=0.005, slippage_rate=0.
     def check_signals(quotes):
         # run strategy
         if len(security_data) > 0 and delay_fill:
-            orders = strategy(security_data, recent_trades[0], positions)
+            orders = strategy(security_data, recent_trades[0], positions, *args, **kwargs)
         for i in xrange(0, len(quotes)):
             security_data[quotes.iloc[i]['SYM']] = quotes.iloc[i]
         time = quotes.iloc[0]['DATE_TIME']
