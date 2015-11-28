@@ -70,10 +70,10 @@ def svm_strategy(quotes, trades, positions, svm_clf):
     max_pos = 100
 
     for sym in quotes:
-        pos = positions.get(sym, 0)
-        qty = base_qty - pos
         feats = quotes[sym][feature_names].values
-        pred = svm_clf.predict(feats)
+        pred = svm_clf.predict(feats)[0]
+        pos = positions.get(sym, 0)
+        qty = base_qty*pred - pos
         if abs(qty) > 0 and np.sign(qty) == np.sign(pred) and abs(pos+qty) <= max_pos:
             orders.append(Order(sym, qty, type='market'))
         #elif pred == 0:
@@ -138,9 +138,10 @@ testing_quotes = testing_quotes.fillna(0)
 # quotes[feature_names] = (quotes[feature_names] - quotes[feature_names].mean()) / quotes[feature_names].std()
 
 thresh = 0.000005
+thresh = 0
 label_hl = 100
 training_quotes['label'] = 0
-training_quotes.ix[training_quotes['log_returns_{}+'.format(label_hl)] > thresh, 'label'] = 1
+training_quotes.ix[training_quotes['log_returns_{}+'.format(label_hl)] >= thresh, 'label'] = 1
 training_quotes.ix[training_quotes['log_returns_{}+'.format(label_hl)] < -thresh, 'label'] = -1
 
 X = training_quotes[feature_names]
