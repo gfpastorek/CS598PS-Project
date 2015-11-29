@@ -124,19 +124,16 @@ def get_data(ticker, year, month, day, bar_width='second'):
     return quotes, trades
 
 
-def get_more_data(tickers, year, month, day, days=1, bar_width='second', max_count=10e4):
+# TODO - days counts empty days as days (i.e weekends), fix?
+def get_more_data(tickers, year, month, day, days=1, bar_width='second'):
     data = []
-    c = 0
     if type(tickers) == str:
         tickers = [tickers]
     for y, m, d in date_iter(year, month, day, days=days):
-        if c > days or c > max_count:
-            break
         for ticker in tickers:
             try:
                 quotes, trades = get_data(ticker, y, m, d, bar_width=bar_width)
                 data.append((quotes, trades))
-                c += 1
             except (IOError, ValueError):
                 continue
     return data
