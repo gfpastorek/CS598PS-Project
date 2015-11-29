@@ -27,7 +27,7 @@ def add_dema(data, halflives=[10, 40, 100], colname='dEMA'):
     for hl in halflives:
         ema = pd.ewma(data['price'], halflife=hl)
         data['{}_{}'.format(colname, hl)] = 0
-        data.ix[1:, '{}_{}'.format(colname, hl)] = pd.ewma(np.diff(ema), halflife=hl)
+        data.ix[1:, '{}_{}'.format(colname, hl)] = np.diff(ema)
         data['{}_std_{}'.format(colname, hl)] = \
             pd.rolling_std(data['{}_{}'.format(colname, hl)], 2*hl)   # TODO, what window to use?
 
