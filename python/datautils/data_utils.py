@@ -43,10 +43,7 @@ def _clean_quotes(data, start_hour=9, start_min=30, end_hour=15, end_min=30, bar
 
     data = filter_invalid_quotes(data)
     data = data.drop(['SYM_SUFFIX', 'NATBBO_IND'], 1)
-    try:
-        data = data.drop(['BIDEX', 'ASKEX'], 1)
-    except:
-        pass
+
     data.columns = ['DATE_TIME', 'SYM', 'BID_PRICE', 'BID_SIZE', 'ASK_PRICE', 'ASK_SIZE']
 
     data = data.set_index('DATE_TIME')
