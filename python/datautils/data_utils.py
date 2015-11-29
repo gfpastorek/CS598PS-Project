@@ -84,7 +84,6 @@ def _clean_trades(data, start_hour=9, start_min=30, end_hour=15, end_min=30):
 
 def get_quotes(ticker, year, month, day, bar_width='second'):
     filename = "{}_{}".format(ticker.lower(), dt.datetime(year, month, day).strftime("%m_%d_%y"))
-    #root_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.getcwd())))
     try:
         root_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
     except NameError:
@@ -97,7 +96,6 @@ def get_quotes(ticker, year, month, day, bar_width='second'):
 
 def get_trades(ticker, year, month, day):
     filename = "{}_{}".format(ticker.lower(), dt.datetime(year, month, day).strftime("%m_%d_%y"))
-    #root_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.getcwd())))
     try:
         root_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
     except NameError:
