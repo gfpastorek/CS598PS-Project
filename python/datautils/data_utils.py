@@ -43,6 +43,7 @@ def _clean_quotes(data, start_hour=9, start_min=30, end_hour=15, end_min=30, bar
 
     data = filter_invalid_quotes(data)
     data = data.drop(['SYM_SUFFIX', 'NATBBO_IND'], 1)
+
     data.columns = ['DATE_TIME', 'SYM', 'BID_PRICE', 'BID_SIZE', 'ASK_PRICE', 'ASK_SIZE']
 
     data = data.set_index('DATE_TIME')
@@ -83,7 +84,6 @@ def _clean_trades(data, start_hour=9, start_min=30, end_hour=15, end_min=30):
 
 def get_quotes(ticker, year, month, day, bar_width='second'):
     filename = "{}_{}".format(ticker.lower(), dt.datetime(year, month, day).strftime("%m_%d_%y"))
-    #root_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.getcwd())))
     try:
         root_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
     except NameError:
@@ -96,7 +96,6 @@ def get_quotes(ticker, year, month, day, bar_width='second'):
 
 def get_trades(ticker, year, month, day):
     filename = "{}_{}".format(ticker.lower(), dt.datetime(year, month, day).strftime("%m_%d_%y"))
-    #root_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.getcwd())))
     try:
         root_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
     except NameError:
@@ -120,20 +119,17 @@ def get_data(ticker, year, month, day, bar_width='second'):
     return quotes, trades
 
 
-def get_more_data(tickers, year, month, day, days=1, bar_width='second', max_count=10e4):
+# TODO - days counts empty days as days (i.e weekends), fix?
+def get_more_data(tickers, year, month, day, days=1, bar_width='second'):
     data = []
-    c = 0
     if type(tickers) == str:
         tickers = [tickers]
     for y, m, d in date_iter(year, month, day, days=days):
-        if c > days or c > max_count:
-            break
         for ticker in tickers:
             try:
                 quotes, trades = get_data(ticker, y, m, d, bar_width=bar_width)
                 data.append((quotes, trades))
-                c += 1
-            except IOError:
+            except (IOError, ValueError):
                 continue
     return data
 
