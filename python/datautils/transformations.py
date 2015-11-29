@@ -16,16 +16,15 @@ def apply_transformations():
     raise NotImplemented("TODO")
 
 
-def add_ohlc(data, params):
+def add_ohlc(data, freq='1min'):
     """
     Adds open/high/low/close/volume columns to the datautils
     :param data:
     :param params:
     :return:
     """
-    freq = params['freq']
     mid_prices = (data['ASK_PRICE']+data['BID_PRICE'])/2
-    ohlc = mid_prices.resample(freq, how='ohlc', fill_method='ffill')
+    ohlc = mid_prices.resample(freq, how='ohlc', fill_method='ffill')  # resample using mid prices
     bid_size_sum = data['BID_SIZE'].resample(freq, how='sum', fill_method='ffill')
     ask_size_sum = data['ASK_SIZE'].resample(freq, how='sum', fill_method='ffill')
 
@@ -43,14 +42,14 @@ def add_ohlc(data, params):
     data['BAR_ASK_SIZE'] = ask_size_resampled
 
 
-def get_ohlc(data, params):
+def get_ohlc(data, params, freq='1min'):
     """
     Return ohlc datautils (instead of adding columns to original datautils)
     :param data:
     :param params:
     :return:
     """
-    freq = params['freq']
+    # freq = params['freq']
     mid_prices = (data['ASK_PRICE']+data['BID_PRICE'])/2
     ohlc = mid_prices.resample(freq, how='ohlc', fill_method='ffill')
     bid_size_sum = data['BID_SIZE'].resample(freq, how='sum', fill_method='ffill')

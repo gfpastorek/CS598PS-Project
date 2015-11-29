@@ -14,6 +14,10 @@ from sklearn import cross_validation, svm
 
 #quotes, trades = get_data('XLE', 2012, 1, 5, bar_width='second')
 data = get_more_data('XLE', 2012, 1, 5, days=3, bar_width='second')
+# data = get_more_data('XLE', 2012, 1, 5, days=1, bar_width='second')
+
+
+print data
 
 hls = [10, 40, 100]
 

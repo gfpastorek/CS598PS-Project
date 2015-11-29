@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import datetime as dt
 from scipy import stats, spatial
+import unittest
 
 
 def generate_features():
@@ -81,3 +82,12 @@ def add_trade_momentum(data, trades, bar_width='second'):
     data['trade_momentum'] = data['MEAN_TRADE_PRICE'] - data['price']   # TODO - normalize
     data.drop('MEAN_TRADE_PRICE', axis=1, inplace=True)
     data.reset_index(inplace=True)
+
+
+def add_mid_price(data):
+    data['MID_PRICE'] = data['ASK_PRICE']-data['BID_PRICE']
+
+
+class TestFeatures(unittest.TestCase):
+    def test_add_mid_price(self):
+        pass
