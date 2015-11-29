@@ -6,10 +6,17 @@ from calendar import monthrange
 from selenium import webdriver
 from selenium.webdriver.support.ui import Select
 
+root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+
 if len(sys.argv) < 3:
     print("usage: download.py YEAR COMPANY_CODES")
     print("usage: download.py 2012 IBM MSFT DELL")
-    sys.exit()
+    #sys.exit()
+    year = '2012'
+    tickers = ['xle']
+else:
+    year = sys.argv[1]
+    tickers = sys.argv[2:]
 
 # log in
 driver = webdriver.Firefox()
@@ -21,12 +28,12 @@ password_box.send_keys('Xh66916202')
 password_box.submit()
 
 # query
-for month in range(12):
-    for day in range(monthrange(int(sys.argv[1]), month+1)[1]):
-        print("downloading " + str(month+1) + '/' + str(day+1) + '/'+sys.argv[1])
+for month in range(1, 2):
+    for day in range(monthrange(int(year), month+1)[1]):
+        print("downloading " + str(month+1) + '/' + str(day+1) + '/'+year)
         driver.get('https://wrds-web.wharton.upenn.edu/wrds/ds/taq/cqm/index.cfm')
 
-        ticker = " ".join(sys.argv[2:]).strip()
+        ticker = " ".join(tickers).strip()
         company_codes = driver.find_element_by_id('code-lookup')
         company_codes.send_keys(ticker)
 
@@ -35,8 +42,6 @@ for month in range(12):
         driver.find_element_by_id('var_BIDSIZ').click()
         driver.find_element_by_id('var_ASK').click()
         driver.find_element_by_id('var_ASKSIZ').click()
-        driver.find_element_by_id('var_BIDEX').click()
-        driver.find_element_by_id('var_ASKEX').click()
         driver.find_element_by_id('var_NATBBO_IND').click()
         driver.find_element_by_id('csv').click()
         driver.find_element_by_id('none').click()
@@ -52,8 +57,8 @@ for month in range(12):
         end_m.select_by_index(month)
         beg_d.select_by_index(day)
         end_d.select_by_index(day)
-        beg_yr.select_by_visible_text(sys.argv[1])
-        end_yr.select_by_visible_text(sys.argv[1])
+        beg_yr.select_by_visible_text(year)
+        end_yr.select_by_visible_text(year)
 
         end_hh = Select(driver.find_element_by_id('end_hh'))
         end_hh.select_by_visible_text('24')
@@ -80,8 +85,9 @@ for month in range(12):
                 pass
 
         # download results
-        filename = ticker.replace(" ", "_") + '_' + str(month+1).zfill(2) + '_' + str(day+1).zfill(2) + '_' + sys.argv[1][2:]
-        filename = filename + os.path.sep + filename + '.csv'
+        filename = ticker.replace(" ", "_") + '_' + str(month+1).zfill(2) + '_' + str(day+1).zfill(2) + '_' + year[2:]
+        filename = filename + os.path.sep + filename + '_quotes.csv'
+        filename = os.path.join(root_dir, 'data', filename)
         if not os.path.exists(os.path.dirname(filename)):
             os.makedirs(os.path.dirname(filename))
         with open(filename, 'wb') as handle:

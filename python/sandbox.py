@@ -13,7 +13,7 @@ import datautils.features as features
 from sklearn import cross_validation, svm
 
 #quotes, trades = get_data('XLE', 2012, 1, 5, bar_width='second')
-data = get_more_data('XLE', 2012, 1, 5, days=3, bar_width='second')
+data = get_more_data('XLE', 2012, 2, 1, days=29, bar_width='second')
 
 hls = [10, 40, 100]
 
@@ -23,7 +23,7 @@ for quotes, trades in data:
     features.add_dema(quotes, halflives=hls)
     features.add_momentum(quotes, halflives=hls)
     features.add_log_return_ema(quotes, halflives=hls)
-    features.add_trade_momentum(quotes, trades, bar_width='second')
+    #features.add_trade_momentum(quotes, trades, bar_width='second')
 
 quotes_list, trades_list = zip(*data)
 

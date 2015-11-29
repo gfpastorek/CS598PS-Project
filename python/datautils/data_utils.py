@@ -43,6 +43,7 @@ def _clean_quotes(data, start_hour=9, start_min=30, end_hour=15, end_min=30, bar
 
     data = filter_invalid_quotes(data)
     data = data.drop(['SYM_SUFFIX', 'NATBBO_IND'], 1)
+    print data.columns
     data.columns = ['DATE_TIME', 'SYM', 'BID_PRICE', 'BID_SIZE', 'ASK_PRICE', 'ASK_SIZE']
 
     data = data.set_index('DATE_TIME')
@@ -88,7 +89,12 @@ def get_quotes(ticker, year, month, day, bar_width='second'):
         root_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
     except NameError:
         root_dir = os.path.realpath(os.path.dirname(os.getcwd()))
+    fpatho = os.path.join(root_dir, 'data', filename, '{}.csv'.format(filename))
     fpath = os.path.join(root_dir, 'data', filename, '{}_quotes.csv'.format(filename))
+    try:
+        os.rename(fpatho, fpath)
+    except:
+        pass
     data = pd.read_csv(fpath, parse_dates=[['DATE', 'TIME_M']], date_parser=_convert_time)
     data = _clean_quotes(data, bar_width=bar_width)
     return data
