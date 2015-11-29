@@ -64,7 +64,7 @@ def add_size_diff(data):
 
 
 def add_trade_momentum(data, trades, bar_width='second'):
-    minute_bars = (bar_width != 'second')
+    minute_bars = (bar_width == 'minute')
     trades = trades.set_index('DATE_TIME')
     trades['PRICExSIZE'] = trades['PRICE'] * trades['SIZE']
     trades = \
