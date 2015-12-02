@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import datetime as dt
 from scipy import stats, spatial
+import unittest
 
 
 def generate_features():
@@ -95,3 +96,12 @@ def add_trade_momentum_dema(data, trades, halflife=10, bar_width='second', colna
     ema = pd.ewma(data['trade_momentum'], halflife=halflife)
     data.ix[feat_col_name, 1:] = ema
     print "Added {}".format(feat_col_name)
+
+
+def add_mid_price(data):
+    data['MID_PRICE'] = data['ASK_PRICE']-data['BID_PRICE']
+
+
+class TestFeatures(unittest.TestCase):
+    def test_add_mid_price(self):
+        pass
