@@ -17,7 +17,7 @@ def label_data(data, label_hls=(10, 40, 100)):
     # TODO - which halflife to use? Kalman filter?
     for hl in label_hls:
         data['log_returns_{}+'.format(hl)] = \
-            np.concatenate([(pd.ewma(data['log_returns'].values[::-1], hl))[:0:-1], [0]])
+            np.concatenate([(pd.ewma(data['log_returns'].values[::-1], halflife=hl))[:0:-1], [0]])
         # TODO - how to get the EWMA decay to match the rolling_std window?
         data['log_returns_std_{}+'.format(hl)] = \
             np.concatenate([(pd.rolling_std(data['log_returns'].values[::-1], 2*hl))[:0:-1], [0]])
@@ -53,7 +53,7 @@ def add_log_return_ema(data, halflives=(10, 40, 100)):
 
     for hl in halflives:
         data['log_returns_{}-'.format(hl)] = \
-            np.concatenate([[0], (pd.ewma(data['log_returns'].values[:-1], hl))])
+            np.concatenate([[0], (pd.ewma(data['log_returns'].values[:-1], halflife=hl))])
         # TODO - how to get the EWMA decay to match the rolling_std window?
         data['log_returns_std_{}-'.format(hl)] = \
             np.concatenate([[0], (pd.rolling_std(data['log_returns'].values[:-1], 2*hl))])
@@ -63,7 +63,11 @@ def add_size_diff(data):
     data['size_diff'] = data['BID_SIZE'] - data['ASK_SIZE']
 
 
-def add_trade_momentum(data, trades, bar_width='second'):
+def add_price_diff(data):
+    data['price_diff'] = data['ASK_PRICE'] - data['BID_PRICE']
+
+
+def add_trade_momentum(data, trades, bar_width='second', colname='trade_momentum'):
     minute_bars = (bar_width == 'minute')
     trades = trades.set_index('DATE_TIME')
     trades['PRICExSIZE'] = trades['PRICE'] * trades['SIZE']
@@ -78,6 +82,16 @@ def add_trade_momentum(data, trades, bar_width='second'):
     trades['MEAN_TRADE_PRICE'] = trades['PRICExSIZE'] / trades['SIZE']
     trades = trades.reset_index().rename(columns={'level_1': 'DATE_TIME'})
     data[['MEAN_TRADE_PRICE', 'SIZE']] = data.merge(trades, on=['SYM', 'DATE_TIME'], how='left')[['MEAN_TRADE_PRICE', 'SIZE']]
-    data['trade_momentum'] = data['MEAN_TRADE_PRICE'] - data['price']   # TODO - normalize
+    data[colname] = data['MEAN_TRADE_PRICE'] - data['price']   # TODO - normalize
     data.drop('MEAN_TRADE_PRICE', axis=1, inplace=True)
     data.reset_index(inplace=True)
+
+
+def add_trade_momentum_dema(data, trades, halflife=10, bar_width='second', colname='trade_momentum_dema'):
+    if 'trade_momentum' not in data.columns:
+        add_trade_momentum(data, trades, bar_width=bar_width)
+    feat_col_name = '{}_{}'.format(colname, halflife)
+    data[feat_col_name] = 0
+    ema = pd.ewma(data['trade_momentum'], halflife=halflife)
+    data.ix[feat_col_name, 1:] = ema
+    print "Added {}".format(feat_col_name)

@@ -15,7 +15,7 @@ root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__fi
 
 years = [2012]
 tickers = ['xle']
-months = [2]
+months = [3]
 
 
 # log in

@@ -107,7 +107,6 @@ def get_trades(ticker, year, month, day):
 
 
 def date_iter(year, month, day, days=1):
-    yield year, month, day
     start_date = dt.datetime(year, month, day)
     for cur_date in (start_date + dt.timedelta(n) for n in range(days)):
         yield cur_date.year, cur_date.month, cur_date.day
