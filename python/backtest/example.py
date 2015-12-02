@@ -107,7 +107,7 @@ def magic_strategy(quotes, trades, positions):
     return orders
 
 
-data = get_more_data('XLE', 2012, 1, 5, days=3, bar_width='second')
+data = get_more_data('XLE', 2012, 1, 5, days=5, bar_width='second')
 
 hls = [10, 40, 100]
 
@@ -137,8 +137,7 @@ testing_quotes = testing_quotes.fillna(0)
 # normalize features
 # quotes[feature_names] = (quotes[feature_names] - quotes[feature_names].mean()) / quotes[feature_names].std()
 
-thresh = 0.000005
-thresh = 0
+thresh = 0.000005/10
 label_hl = 100
 training_quotes['label'] = 0
 training_quotes.ix[training_quotes['log_returns_{}+'.format(label_hl)] >= thresh, 'label'] = 1
@@ -147,7 +146,15 @@ training_quotes.ix[training_quotes['log_returns_{}+'.format(label_hl)] < -thresh
 X = training_quotes[feature_names]
 y = training_quotes['label']
 
-svm_clf = svm.LinearSVC(C=1, class_weight='auto')
+class_weights = {
+    -1: 1,
+    0: 1,
+    1: 1
+}
+
+svm_clf = svm.LinearSVC(C=1, class_weight=class_weights)
+#svm_clf = svm.SVC(C=1, kernel='linear', class_weight='auto', probability=True)
+# predict_proba
 svm_clf.fit(X, y)
 
 #testing_quotes['label'] = svm_clf.predict(testing_quotes[feature_names].values)

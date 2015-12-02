@@ -16,7 +16,7 @@ from sklearn import cross_validation, svm
 time_period_cutoffs = (30, 180, 420, 450)
 
 #quotes, trades = get_data('XLE', 2012, 1, 5, bar_width='second')
-data = get_more_data('XLE', 2012, 2, 5, days=29, bar_width='second')
+data = get_more_data('XLE', 2012, 2, 1, days=29, bar_width='second')
 
 hls = [10, 40, 100]
 
@@ -38,8 +38,8 @@ trades = pd.concat(trades_list)
 
 feature_names = ['momentum', 'dEMA_10', 'dEMA_40', 'dEMA_100', 'trade_momentum',
                  'log_returns_10-', 'log_returns_40-', 'log_returns_100-',
-                 'log_returns_std_10-', 'log_returns_std_40-', 'trade_momentum', 'size_diff',
-                 'price_diff', 'trades_momentum_dema_40']
+                 'log_returns_std_10-', 'log_returns_std_40-', 'size_diff',
+                 'price_diff', 'trade_momentum_dema_40']
 
 quotes = quotes.fillna(0)
 
@@ -74,9 +74,66 @@ reg = sm.OLS(quotes['log_returns_{}+'.format(hl)],
 print reg.summary()
 
 
-
+print """
+SVM, 3-class 5-fold CV, custom-class weights, weighted precision score
 """
-SVM, 3-class 5-fold CV, auto-class weights
+class_weights = {
+    -1: 1,
+    0: 2,
+    1: 1
+}
+print "class_weights = " + str(class_weights)
+thresh = 0.000005
+hl = 100
+K = 5
+quotes['label'] = 0
+quotes.ix[quotes['log_returns_100+'] > thresh, 'label'] = 1
+quotes.ix[quotes['log_returns_100+'] < -thresh, 'label'] = -1
+
+X = quotes[feature_names]
+y = quotes['label']
+
+clf = svm.LinearSVC(C=1, class_weight=class_weights)
+scores = cross_validation.cross_val_score(clf, X, y, cv=K)
+#scores = cross_validation.cross_val_score(clf, X, y, cv=K, scoring='precision_weighted')
+
+clf = svm.LinearSVC(C=1, class_weight=class_weights)
+clf.fit(X, y)
+w = clf.coef_
+svm_output(scores, w, y, K)
+
+
+print """
+SVM, 3-class 5-fold CV, custom-class weights, weighted precision score
+"""
+class_weights = {
+    -1: 1,
+    0: 1,
+    1: 1
+}
+print "class_weights = " + str(class_weights)
+thresh = 0.000005
+hl = 100
+K = 5
+quotes['label'] = 0
+quotes.ix[quotes['log_returns_100+'] > thresh, 'label'] = 1
+quotes.ix[quotes['log_returns_100+'] < -thresh, 'label'] = -1
+
+X = quotes[feature_names]
+y = quotes['label']
+
+clf = svm.LinearSVC(C=1, class_weight=class_weights)
+scores = cross_validation.cross_val_score(clf, X, y, cv=K)
+#scores = cross_validation.cross_val_score(clf, X, y, cv=K, scoring='precision_weighted')
+
+clf = svm.LinearSVC(C=1, class_weight=class_weights)
+clf.fit(X, y)
+w = clf.coef_
+svm_output(scores, w, y, K)
+
+
+print """
+SVM, 3-class 5-fold CV, auto-class weights, weighted precision score
 """
 thresh = 0.000005
 hl = 100
@@ -89,61 +146,10 @@ X = quotes[feature_names]
 y = quotes['label']
 
 clf = svm.LinearSVC(C=1, class_weight='auto')
-#clf = svm.SVC(C=1, kernel='rbf', class_weight='auto')
 scores = cross_validation.cross_val_score(clf, X, y, cv=K)
+#scores = cross_validation.cross_val_score(clf, X, y, cv=K, scoring='precision_weighted')
 
 clf = svm.LinearSVC(C=1, class_weight='auto')
 clf.fit(X, y)
 w = clf.coef_
 svm_output(scores, w, y, K)
-
-
-
-"""
-SVM, 2-class 5-fold CV, filtered, + vs -
-"""
-thresh = 0.000005/10
-hl = 100
-K = 5
-quotes['label'] = 0
-quotes.ix[quotes['log_returns_100+'] > thresh, 'label'] = 1
-quotes.ix[quotes['log_returns_100+'] < -thresh, 'label'] = -1
-filtered_quotes = quotes[quotes['label'] != 0]
-
-X = filtered_quotes[feature_names]
-y = filtered_quotes['label']
-
-clf = svm.LinearSVC(C=1, class_weight='auto')
-scores = cross_validation.cross_val_score(clf, X, y, cv=K)
-
-clf = svm.LinearSVC(C=1, class_weight='auto')
-clf.fit(X, y)
-w = clf.coef_
-
-svm_output(scores, w, y, K)
-
-
-
-
-"""
-SVM, 2-class 5-fold CV, filtered
-"""
-thresh = 0.000005/10
-hl = 100
-K = 5
-quotes['label'] = 0
-quotes.ix[abs(quotes['log_returns_100+']) > thresh, 'label'] = 1
-quotes.ix[abs(quotes['log_returns_100+']) < -thresh, 'label'] = -1
-
-X = quotes[feature_names]
-y = quotes['label']
-
-clf = svm.LinearSVC(C=1, class_weight='auto')
-scores = cross_validation.cross_val_score(clf, X, y, cv=K)
-
-clf = svm.LinearSVC(C=1, class_weight='auto')
-clf.fit(X, y)
-w = clf.coef_
-
-svm_output(scores, w, y, K)
-

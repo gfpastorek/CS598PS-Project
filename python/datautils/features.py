@@ -94,7 +94,7 @@ def add_trade_momentum_dema(data, trades, halflife=10, bar_width='second', colna
     feat_col_name = '{}_{}'.format(colname, halflife)
     data[feat_col_name] = 0
     ema = pd.ewma(data['trade_momentum'], halflife=halflife)
-    data.ix[feat_col_name, 1:] = ema
+    data.ix[1:, feat_col_name] = np.diff(ema)
     print "Added {}".format(feat_col_name)
 
 

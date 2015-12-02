@@ -1,0 +1,11 @@
+
+12/1
+--tried reducing false positives by weighting 0-class more,
+----removing auto-feature weight, improved accuracy,
+----when running example strategy it is not trading. need to investigate
+----precision_weighted score could be useful, but hard to intuitively analyze
+----consider implementing CV yourself so we can display false positive rate
+
+--added some more features, none were breakthroughts
+--bug fixes
+
