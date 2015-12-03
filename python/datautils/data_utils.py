@@ -133,27 +133,31 @@ def get_more_data(tickers, year, month, day, days=1, bar_width='second'):
     return data
 
 
-import unittest
+def get_test_data():
+    # TODO
+    pass
 
-
-class TestDataUtils(unittest.TestCase):
-    def test_get_test_data(self):
-        # get_data(None, None, None, None)
-        pass
-
-    def test_convert_time(self):
-        date = "20120105"
-        time = "09:30:00.291"
-        dt = _convert_time(date, time)
-        assert dt.year == 2012
-        assert dt.month == 1
-        assert dt.day == 5
-        assert dt.hour == 9
-        assert dt.minute == 30
-        assert dt.second == 0
-
-    def test_filter_data_by_time(self):
-        pass
+# import unittest
+#
+#
+# class TestDataUtils(unittest.TestCase):
+#     def test_get_test_data(self):
+#         # get_data(None, None, None, None)
+#         pass
+#
+#     def test_convert_time(self):
+#         date = "20120105"
+#         time = "09:30:00.291"
+#         dt = _convert_time(date, time)
+#         assert dt.year == 2012
+#         assert dt.month == 1
+#         assert dt.day == 5
+#         assert dt.hour == 9
+#         assert dt.minute == 30
+#         assert dt.second == 0
+#
+#     def test_filter_data_by_time(self):
+#         pass
 
 
 

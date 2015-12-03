@@ -16,7 +16,8 @@ from sklearn import cross_validation, svm
 time_period_cutoffs = (30, 180, 420, 450)
 
 #quotes, trades = get_data('XLE', 2012, 1, 5, bar_width='second')
-data = get_more_data('XLE', 2012, 2, 1, days=29, bar_width='second')
+# data = get_more_data('XLE', 2012, 2, 1, days=29, bar_width='second')
+data = get_more_data('XLE', 2012, 1, 5, days=1, bar_width='second')
 
 hls = [10, 40, 100]
 
