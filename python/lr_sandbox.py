@@ -7,7 +7,7 @@ import os
 from pykalman import KalmanFilter
 import statsmodels.api as sm
 from backtest.backtest import backtest, Order
-from datautils.data_utils import *
+from datautils.data_utils import get_data, get_more_data
 import datautils.features as features
 
 
@@ -42,8 +42,6 @@ def cross_validation(data, clf, feature_columns, ycol='label', label='label', K=
     #data.apply(np.random.shuffle, axis=0)
     partitions = np.array_split(data, K)
 
-    weights = []
-
     results = {
         'run': range(1, K+1) + ['Total'],
         'acc': [None]*(K+1),
@@ -73,19 +71,14 @@ def cross_validation(data, clf, feature_columns, ycol='label', label='label', K=
         results['0'][k] = np.sum(pred_y == 0)
         results['1'][k] = np.sum(pred_y == 1)
 
-        W = clf.coef_
-        weights.append(pd.DataFrame({'-1': W[0], '0': W[1], '1': W[2]}, index=feature_columns))
-
     for col in results:
         if col != 'run':
             results[col][K] = np.mean(results[col][:K])
 
-    mean_weights = sum(weights) / K
-
-    return pd.DataFrame(results).set_index('run'), mean_weights
+    return pd.DataFrame(results).set_index('run')
 
 
-def clf_output(cv_results, y, K):
+def clf_output(cv_results, y, K, feature_names, w=None, summary=None):
     print """
                                  Results
 ==============================================================================
@@ -95,45 +88,63 @@ def clf_output(cv_results, y, K):
                                 len(y[y == 1])])/len(y)},
                        index=[-1, 0, 1])
     print pd.DataFrame({'values': [(len(y)/K)*(K-1)]}, index=['Training Size / Fold'])
-    print cv_results[0]
-    print cv_results[1]
+    print cv_results
     print "=============================================================================="
 
 # time period cutoffs in minutes from start
 time_period_cutoffs = (30, 180, 420, 450)
 
-pred_col = 'log_returns_40+'
-#pred_col = 'log_returns_100+'
-#pred_col = 'log_returns_200+'
-
 #quotes, trades = get_data('XLE', 2012, 1, 5, bar_width='second')
-#data = get_more_data('XLE', 2012, 2, 1, days=29, bar_width='second', start_hour=10)
-datas = get_trades_and_quotes('XLE', 2012, 2, 1, days=1, bar_width='second', start_hour=10)
+data = get_more_data('XLE', 2012, 2, 1, days=1, bar_width='second')
 
 hls = [10, 40, 100]
 
-feature_names = []
+for quotes, trades in data:
+    features.label_data(quotes, label_hls=hls)
+    features.add_ema(quotes, halflives=hls)
+    features.add_dema(quotes, halflives=hls)
+    features.add_momentum(quotes, halflives=hls)
+    features.add_log_return_ema(quotes, halflives=hls)
+    #features.add_trade_momentum(quotes, trades, bar_width='second')
+    features.add_price_diff(quotes)
+    features.add_size_diff(quotes)
+    #features.add_trade_momentum_dema(quotes, trades, halflife=40)
 
-for data in datas:
-    features.add_future_log_returns(data, label_hls=hls)
-    feature_names += features.add_dema(data, halflives=hls)
-    feature_names += features.add_momentum(data, halflives=hls)
-    feature_names += features.add_log_return_ema(data, halflives=hls)
-    feature_names += features.add_price_diff(data)
-    feature_names += features.add_size_diff(data)
-    feature_names += features.add_vpin_time(data, window=dt.timedelta(seconds=20))
+quotes_list, trades_list = zip(*data)
 
-data = pd.concat(datas)
+quotes = pd.concat(quotes_list)
+trades = pd.concat(trades_list)
 
-#quotes_list, trades_list = zip(*data)
-#quotes = pd.concat(quotes_list)
-#trades = pd.concat(trades_list)
+feature_names = ['momentum', 'dEMA_10', 'dEMA_40', 'dEMA_100',
+                 'log_returns_10-', 'log_returns_40-', 'log_returns_100-',
+                 'log_returns_std_10-', 'log_returns_std_40-', 'size_diff',
+                 'price_diff', 'VPIN_TIME']
 
-data = data.fillna(0)
+quotes = quotes.fillna(0)
 
 # normalize features
-data[feature_names] = (data[feature_names] - data[feature_names].mean()) / data[feature_names].std()
+quotes[feature_names] = (quotes[feature_names] - quotes[feature_names].mean()) / quotes[feature_names].std()
 
+
+"""
+Linear regression [features] -> log_returns_100+
+Entry threshold is ~ 0.000005 for log_returns_100+
+"""
+class LRclf(object):
+    def __init__(self, thresh):
+        self.thresh = thresh
+
+    def fit(self, X, y):
+        X = sm.add_constant(X)
+        self.mod = sm.OLS(y, X).fit()
+
+    def predict(self, X):
+        X = sm.add_constant(X)
+        pred = self.mod.predict(X)
+        results = np.zeros(len(pred))
+        results[pred >= thresh] = 1
+        results[pred <= -thresh] = -1
+        return results
 
 print """
 Linear SVM, 3-class 5-fold CV, no-class weights
@@ -143,15 +154,49 @@ print "thresh = {}".format(thresh)
 hl = 100
 K = 5
 
-data['label'] = 0
-data.ix[data[pred_col] > thresh, 'label'] = 1
-data.ix[data[pred_col] < -thresh, 'label'] = -1
+quotes['label'] = 0
+quotes.ix[quotes['log_returns_100+'] > thresh, 'label'] = 1
+quotes.ix[quotes['log_returns_100+'] < -thresh, 'label'] = -1
 
 #clf = LRclf(thresh)
 
 clf = svm.LinearSVC(class_weight='auto')
-cv_results = cross_validation(data, clf, feature_names, label='label', K=5)
-y = data['label'].values
+cv_results = cross_validation(quotes, clf, feature_names, label='label', K=5)
+y = quotes['label'].values
 #reg = sm.OLS(y, quotes[feature_names]).fit()
 #print reg.summary()
+clf_output(cv_results, y, K, feature_names)
+
+
+print """
+Linear Regression Classifier, 3-class 5-fold CV, no-class weights
+"""
+thresh = 0.000005*100
+print "thresh = {}".format(thresh)
+hl = 100
+K = 5
+
+quotes['label'] = 0
+quotes.ix[quotes['log_returns_100+'] > thresh, 'label'] = 1
+quotes.ix[quotes['log_returns_100+'] < -thresh, 'label'] = -1
+
+clf = LRclf(thresh)
+cv_results = cross_validation(quotes, clf, feature_names, ycol='log_returns_100+', label='label', K=5)
+clf_output(cv_results, y, K, feature_names)
+
+
+print """
+Linear Regression Classifier, 3-class 5-fold CV, no-class weights
+"""
+thresh = 0.00001
+print "thresh = {}".format(thresh)
+hl = 100
+K = 5
+
+quotes['label'] = 0
+quotes.ix[quotes['log_returns_100+'] > thresh, 'label'] = 1
+quotes.ix[quotes['log_returns_100+'] < -thresh, 'label'] = -1
+
+clf = LRclf(thresh)
+cv_results = cross_validation(quotes, clf, feature_names, label='label', K=5)
 clf_output(cv_results, y, K, feature_names)

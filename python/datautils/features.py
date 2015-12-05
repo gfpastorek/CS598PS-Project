@@ -11,6 +11,7 @@ def generate_features():
     raise NotImplemented("TODO")
 
 
+def add_future_log_returns(data, label_hls=(10, 40, 100)):
 def standardize_features(data, feature_names):
     for feature in feature_names:
         sk.preprocessing.scale(data[feature])
@@ -36,13 +37,13 @@ def add_dema(data, halflives=[10, 40, 100], colname='dEMA'):
         ema = pd.ewma(data['price'], halflife=hl)
         data['{}_{}'.format(colname, hl)] = 0
         data.ix[1:, '{}_{}'.format(colname, hl)] = np.diff(ema)
-        data['{}_std_{}'.format(colname, hl)] = \
-            pd.rolling_std(data['{}_{}'.format(colname, hl)], 2*hl)   # TODO, what window to use?
+    return ['{}_{}'.format(colname, hl) for hl in halflives]
 
 
 def add_ema(data, halflives=[10, 40, 100], colname='EMA'):
     for hl in halflives:
         data['{}_{}'.format(colname, hl)] = pd.ewma(data['price'], halflife=hl)
+    return ['{}_{}'.format(colname, hl) for hl in halflives]
 
 
 def add_momentum(data, halflives=[10, 40, 100], colname='momentum'):
@@ -52,6 +53,7 @@ def add_momentum(data, halflives=[10, 40, 100], colname='momentum'):
         for hl2 in halflives:
             if hl2 < hl1:
                 data[colname] += data['EMA_{}'.format(hl1)] - data['EMA_{}'.format(hl2)]
+    return [colname]
 
 
 def add_log_return_ema(data, halflives=(10, 40, 100)):
@@ -65,11 +67,12 @@ def add_log_return_ema(data, halflives=(10, 40, 100)):
         # TODO - how to get the EWMA decay to match the rolling_std window?
         data['log_returns_std_{}-'.format(hl)] = \
             np.concatenate([[0], (pd.rolling_std(data['log_returns'].values[:-1], 2*hl))])
+    return ['log_returns_{}-'.format(hl) for hl in halflives] + ['log_returns_std_{}-'.format(hl) for hl in halflives]
 
 
 def add_trade_momentum(data, trades, bar_width='second', colname='trade_momentum'):
-    # TODO: refactor this so it works with TAQ data
     minute_bars = (bar_width == 'minute')
+    data['price'] = (data['BID_PRICE']*data['BID_SIZE'] + data['ASK_PRICE']*data['ASK_SIZE']) / (data['BID_SIZE'] + data['ASK_SIZE'])
     trades = trades.set_index('DATE_TIME')
     trades['PRICExSIZE'] = trades['PRICE'] * trades['SIZE']
     trades = \
@@ -86,6 +89,7 @@ def add_trade_momentum(data, trades, bar_width='second', colname='trade_momentum
     data[colname] = data['MEAN_TRADE_PRICE'] - data['price']   # TODO - normalize
     data.drop('MEAN_TRADE_PRICE', axis=1, inplace=True)
     data.reset_index(inplace=True)
+    return [colname]
 
 
 def add_trade_momentum_dema(data, trades, halflife=10, bar_width='second', colname='trade_momentum_dema'):
@@ -100,10 +104,12 @@ def add_trade_momentum_dema(data, trades, halflife=10, bar_width='second', colna
 
 def add_size_diff(data):
     data['size_diff'] = data['BID_SIZE'] - data['ASK_SIZE']
+    return ['size_diff']
 
 
 def add_price_diff(data):
     data['price_diff'] = data['ASK_PRICE'] - data['BID_PRICE']
+    return ['price_diff']
 
 
 def add_mid_price(data):
@@ -140,7 +146,8 @@ def add_vpin_time(data, window):
     data['trade_sum'] = data.apply(sum_window, axis=1)
     data['lift_sum'] = data.apply(sum_lifts, axis=1)
     data['VPIN_TIME'] = data['lift_sum']/data['trade_sum']
-    data = data.drop(['start_index', 'end_index', 'lift', 'trade_sum', 'lift_sum'], axis=1, inplace=True)
+    data.drop(['start_index', 'end_index', 'lift', 'trade_sum', 'lift_sum'], axis=1, inplace=True)
+    return ['VPIN_TIME']
 
 
 class TestFeatures(unittest.TestCase):
