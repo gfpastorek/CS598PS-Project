@@ -7,14 +7,14 @@ import os
 from pykalman import KalmanFilter
 import statsmodels.api as sm
 from backtest.backtest import backtest, Order
-from datautils.data_utils import get_data, get_more_data
+from datautils.data_utils import *
 import datautils.features as features
 
 
 from sklearn import cross_validation, svm
 
 
-def cross_validation(data, clf, feature_columns, label='label', K=5,
+def cross_validation(data, clf, feature_columns, ycol='label', label='label', K=5,
                      fit_method=lambda cl, X, y: cl.fit(X, y),
                      predict_method=lambda cl, X: cl.predict(X)):
     """
@@ -39,8 +39,10 @@ def cross_validation(data, clf, feature_columns, label='label', K=5,
     1           1
     -1          -1
     """
-    data.apply(np.random.shuffle, axis=0)
+    #data.apply(np.random.shuffle, axis=0)
     partitions = np.array_split(data, K)
+
+    weights = []
 
     results = {
         'run': range(1, K+1) + ['Total'],
@@ -48,13 +50,16 @@ def cross_validation(data, clf, feature_columns, label='label', K=5,
         'fpr': [None]*(K+1),
         'fnr': [None]*(K+1),
         'bpr': [None]*(K+1),
-        'gpr': [None]*(K+1)
+        'gpr': [None]*(K+1),
+        '-1': [None]*(K+1),
+        '0': [None]*(K+1),
+        '1': [None]*(K+1)
     }
 
     for k in xrange(K):
         training_data = pd.concat(partitions[:k] + partitions[(k+1):])
         testing_data = partitions[k]
-        train_x, train_y = training_data[feature_columns], training_data[label]
+        train_x, train_y = training_data[feature_columns], training_data[ycol]
         test_x, test_y = testing_data[feature_columns], testing_data[label]
         fit_method(clf, train_x, train_y)
         pred_y = predict_method(clf, test_x)
@@ -64,179 +69,89 @@ def cross_validation(data, clf, feature_columns, label='label', K=5,
         results['fnr'][k] = np.sum((pred_y != test_y) & (pred_y == 0)) / np.sum(pred_y == 0)
         results['bpr'][k] = np.sum((pred_y * test_y) == -1) / np.sum(test_y != 0)
         results['gpr'][k] = np.sum((pred_y == test_y) & (test_y != 0)) / np.sum(test_y != 0)
+        results['-1'][k] = np.sum(pred_y == -1)
+        results['0'][k] = np.sum(pred_y == 0)
+        results['1'][k] = np.sum(pred_y == 1)
+
+        W = clf.coef_
+        weights.append(pd.DataFrame({'-1': W[0], '0': W[1], '1': W[2]}, index=feature_columns))
 
     for col in results:
         if col != 'run':
             results[col][K] = np.mean(results[col][:K])
 
-    return pd.DataFrame(results).set_index('run')
+    mean_weights = sum(weights) / K
+
+    return pd.DataFrame(results).set_index('run'), mean_weights
 
 
-def clf_output(cv_results, y, K, feature_names, w=None, summary=None):
-    if w is not None:
-        w = w / np.linalg.norm(w)
+def clf_output(cv_results, y, K):
     print """
                                  Results
 ==============================================================================
     """
-    if w is not None:
-        print pd.DataFrame({'weight{}'.format(i): w[i] for i in xrange(0, len(w))}, index=feature_names)
-    if summary is not None:
-        print summary
     print pd.DataFrame({'%': np.array([len(y[y == -1]),
                                 len(y[y == 0]),
                                 len(y[y == 1])])/len(y)},
                        index=[-1, 0, 1])
     print pd.DataFrame({'values': [(len(y)/K)*(K-1)]}, index=['Training Size / Fold'])
-    print cv_results
+    print cv_results[0]
+    print cv_results[1]
     print "=============================================================================="
 
 # time period cutoffs in minutes from start
 time_period_cutoffs = (30, 180, 420, 450)
 
+pred_col = 'log_returns_40+'
+#pred_col = 'log_returns_100+'
+#pred_col = 'log_returns_200+'
+
 #quotes, trades = get_data('XLE', 2012, 1, 5, bar_width='second')
-data = get_more_data('XLE', 2012, 1, 5, days=1, bar_width='second')
+#data = get_more_data('XLE', 2012, 2, 1, days=29, bar_width='second', start_hour=10)
+datas = get_trades_and_quotes('XLE', 2012, 2, 1, days=1, bar_width='second', start_hour=10)
 
 hls = [10, 40, 100]
 
-for quotes, trades in data:
-    features.label_data(quotes, label_hls=hls)
-    features.add_ema(quotes, halflives=hls)
-    features.add_dema(quotes, halflives=hls)
-    features.add_momentum(quotes, halflives=hls)
-    features.add_log_return_ema(quotes, halflives=hls)
-    features.add_trade_momentum(quotes, trades, bar_width='second')
-    features.add_price_diff(quotes)
-    features.add_size_diff(quotes)
-    features.add_trade_momentum_dema(quotes, trades, halflife=40)
+feature_names = []
 
-quotes_list, trades_list = zip(*data)
+for data in datas:
+    features.add_future_log_returns(data, label_hls=hls)
+    feature_names += features.add_dema(data, halflives=hls)
+    feature_names += features.add_momentum(data, halflives=hls)
+    feature_names += features.add_log_return_ema(data, halflives=hls)
+    feature_names += features.add_price_diff(data)
+    feature_names += features.add_size_diff(data)
+    feature_names += features.add_vpin_time(data, window=dt.timedelta(seconds=20))
 
-quotes = pd.concat(quotes_list)
-trades = pd.concat(trades_list)
+data = pd.concat(datas)
 
-feature_names = ['momentum', 'dEMA_10', 'dEMA_40', 'dEMA_100', 'trade_momentum',
-                 'log_returns_10-', 'log_returns_40-', 'log_returns_100-',
-                 'log_returns_std_10-', 'log_returns_std_40-', 'size_diff',
-                 'price_diff', 'trade_momentum_dema_40']
+#quotes_list, trades_list = zip(*data)
+#quotes = pd.concat(quotes_list)
+#trades = pd.concat(trades_list)
 
-quotes = quotes.fillna(0)
+data = data.fillna(0)
 
 # normalize features
-quotes[feature_names] = (quotes[feature_names] - quotes[feature_names].mean()) / quotes[feature_names].std()
-
-
-"""
-Linear regression [features] -> log_returns_100+
-Entry threshold is ~ 0.000005 for log_returns_100+
-"""
-class LRclf(object):
-    def __init__(self, thresh):
-        self.thresh = thresh
-
-    def fit(self, X, y):
-        X = sm.add_constant(X)
-        self.mod = sm.OLS(y, X).fit()
-
-    def predict(self, X):
-        X = sm.add_constant(X)
-        pred = self.mod.predict(X)
-        results = np.zeros(len(pred))
-        results[pred >= thresh] = 1
-        results[pred <= thresh] = -1
-        return results
-
-print """
-Linear Regression Classifier, 3-class 5-fold CV, no-class weights
-"""
-thresh = 0.000005/2
-hl = 100
-K = 5
-
-quotes['label'] = 0
-quotes.ix[quotes['log_returns_100+'] > thresh, 'label'] = 1
-quotes.ix[quotes['log_returns_100+'] < -thresh, 'label'] = -1
-
-clf = LRclf(thresh)
-cv_results = cross_validation(quotes, clf, feature_names, label='label', K=5)
-y = quotes['log_returns_{}+'.format(hl)].values
-reg = sm.OLS(y, quotes[feature_names]).fit()
-summary = reg.summary()
-clf_output(cv_results, y, K, feature_names, summary=summary)
-
-print """
-SVM, 3-class 5-fold CV, custom-class weights
-"""
-class_weights = {
-    -1: 1,
-    0: 2,
-    1: 1
-}
-print "class_weights = " + str(class_weights)
-thresh = 0.000005/2
-hl = 100
-K = 5
-quotes['label'] = 0
-quotes.ix[quotes['log_returns_100+'] > thresh, 'label'] = 1
-quotes.ix[quotes['log_returns_100+'] < -thresh, 'label'] = -1
-
-clf = svm.LinearSVC(C=1, class_weight=class_weights)
-cv_results = cross_validation(quotes, clf, feature_names, label='label', K=5)
-
-X = quotes[feature_names]
-y = quotes['label']
-
-clf = svm.LinearSVC(C=1, class_weight=class_weights)
-clf.fit(X, y)
-w = clf.coef_
-clf_output(cv_results, y, K, feature_names, w=w)
+data[feature_names] = (data[feature_names] - data[feature_names].mean()) / data[feature_names].std()
 
 
 print """
-SVM, 3-class 5-fold CV, custom-class weights
-"""
-class_weights = {
-    -1: 1,
-    0: 1,
-    1: 1
-}
-print "class_weights = " + str(class_weights)
-thresh = 0.000005/2
-hl = 100
-K = 5
-quotes['label'] = 0
-quotes.ix[quotes['log_returns_100+'] > thresh, 'label'] = 1
-quotes.ix[quotes['log_returns_100+'] < -thresh, 'label'] = -1
-
-X = quotes[feature_names]
-y = quotes['label']
-
-clf = svm.LinearSVC(C=1, class_weight=class_weights)
-cv_results = cross_validation(quotes, clf, feature_names, label='label', K=5)
-
-clf = svm.LinearSVC(C=1, class_weight=class_weights)
-clf.fit(X, y)
-w = clf.coef_
-clf_output(cv_results, y, K, feature_names, w=w)
-
-
-print """
-SVM, 3-class 5-fold CV, auto-class weights
+Linear SVM, 3-class 5-fold CV, no-class weights
 """
 thresh = 0.000005/2
+print "thresh = {}".format(thresh)
 hl = 100
 K = 5
-quotes['label'] = 0
-quotes.ix[quotes['log_returns_100+'] > thresh, 'label'] = 1
-quotes.ix[quotes['log_returns_100+'] < -thresh, 'label'] = -1
 
-X = quotes[feature_names]
-y = quotes['label']
+data['label'] = 0
+data.ix[data[pred_col] > thresh, 'label'] = 1
+data.ix[data[pred_col] < -thresh, 'label'] = -1
 
-clf = svm.LinearSVC(C=1, class_weight='auto')
-cv_results = cross_validation(quotes, clf, feature_names, label='label', K=5)
+#clf = LRclf(thresh)
 
-clf = svm.LinearSVC(C=1, class_weight='auto')
-clf.fit(X, y)
-w = clf.coef_
-clf_output(cv_results, y, K, feature_names, w=w)
+clf = svm.LinearSVC(class_weight='auto')
+cv_results = cross_validation(data, clf, feature_names, label='label', K=5)
+y = data['label'].values
+#reg = sm.OLS(y, quotes[feature_names]).fit()
+#print reg.summary()
+clf_output(cv_results, y, K, feature_names)

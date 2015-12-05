@@ -83,7 +83,7 @@ def _clean_trades(data, start_hour=9, start_min=30, end_hour=15, end_min=30):
     return data.reset_index().rename(columns={'level_1': 'DATE_TIME'})
 
 
-def get_quotes(ticker, year, month, day, bar_width='second'):
+def get_quotes(ticker, year, month, day, bar_width='second', **kwargs):
     filename = "{}_{}".format(ticker.lower(), dt.datetime(year, month, day).strftime("%m_%d_%y"))
     try:
         root_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
@@ -91,11 +91,11 @@ def get_quotes(ticker, year, month, day, bar_width='second'):
         root_dir = os.path.realpath(os.path.dirname(os.getcwd()))
     fpath = os.path.join(root_dir, 'data', filename, '{}_quotes.csv'.format(filename))
     data = pd.read_csv(fpath, parse_dates=[['DATE', 'TIME_M']], date_parser=_convert_time)
-    data = _clean_quotes(data, bar_width=bar_width)
+    data = _clean_quotes(data, bar_width=bar_width, **kwargs)
     return data
 
 
-def get_trades(ticker, year, month, day):
+def get_trades(ticker, year, month, day, **kwargs):
     filename = "{}_{}".format(ticker.lower(), dt.datetime(year, month, day).strftime("%m_%d_%y"))
     try:
         root_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
@@ -103,7 +103,7 @@ def get_trades(ticker, year, month, day):
         root_dir = os.path.realpath(os.path.dirname(os.getcwd()))
     fpath = os.path.join(root_dir, 'data', filename, '{}_trades.csv'.format(filename))
     data = pd.read_csv(fpath, parse_dates=[['DATE', 'TIME_M']], date_parser=_convert_time)
-    data = _clean_trades(data)
+    data = _clean_trades(data, **kwargs)
     return data
 
 
@@ -113,40 +113,34 @@ def date_iter(year, month, day, days=1):
         yield cur_date.year, cur_date.month, cur_date.day
 
 
-def get_data(ticker, year, month, day, bar_width='second'):
-    quotes = get_quotes(ticker, year, month, day, bar_width=bar_width)
-    trades = get_trades(ticker, year, month, day)
+def get_data(ticker, year, month, day, bar_width='second', **kwargs):
+    quotes = get_quotes(ticker, year, month, day, bar_width=bar_width, **kwargs)
+    trades = get_trades(ticker, year, month, day, **kwargs)
     return quotes, trades
 
 
 # TODO - days counts empty days as days (i.e weekends), fix?
-def get_more_data(tickers, year, month, day, days=1, bar_width='second'):
+def get_more_data(tickers, year, month, day, days=1, bar_width='second', **kwargs):
     data = []
     if type(tickers) == str:
         tickers = [tickers]
     for y, m, d in date_iter(year, month, day, days=days):
         for ticker in tickers:
             try:
-                quotes, trades = get_data(ticker, y, m, d, bar_width=bar_width)
+                quotes, trades = get_data(ticker, y, m, d, bar_width=bar_width, **kwargs)
                 data.append((quotes, trades))
             except (IOError, ValueError):
                 continue
     return data
 
 
-def get_trades_and_quotes(tickers, year, month, day, days=1, bar_width='second'):
-    data = get_more_data(tickers, year, month, day, days=1, bar_width='second')
+def get_trades_and_quotes(tickers, year, month, day, days=1, bar_width='second', **kwargs):
+    data = get_more_data(tickers, year, month, day, days=days, bar_width=bar_width, **kwargs)
     return merge_trades_and_quotes(data)
 
 
 def merge_trades_and_quotes(data):
-    for i in range(len(data)):
-        trades_and_quotes = data[i]
-        quotes = trades_and_quotes[0]
-        trades = trades_and_quotes[1]
-        merged = pd.ordered_merge(quotes, trades, fill_method='ffill')
-        data[i] = merged
-    return data
+    return [pd.ordered_merge(quotes, trades, fill_method='ffill') for quotes, trades in data]
 
 
 def get_dev_data():

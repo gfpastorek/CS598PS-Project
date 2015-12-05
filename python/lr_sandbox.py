@@ -14,7 +14,7 @@ import datautils.features as features
 from sklearn import cross_validation, svm
 
 
-def cross_validation(data, clf, feature_columns, ycol='log_returns_100+', label='label', K=5,
+def cross_validation(data, clf, feature_columns, ycol='label', label='label', K=5,
                      fit_method=lambda cl, X, y: cl.fit(X, y),
                      predict_method=lambda cl, X: cl.predict(X)):
     """
@@ -48,7 +48,10 @@ def cross_validation(data, clf, feature_columns, ycol='log_returns_100+', label=
         'fpr': [None]*(K+1),
         'fnr': [None]*(K+1),
         'bpr': [None]*(K+1),
-        'gpr': [None]*(K+1)
+        'gpr': [None]*(K+1),
+        '-1': [None]*(K+1),
+        '0': [None]*(K+1),
+        '1': [None]*(K+1)
     }
 
     for k in xrange(K):
@@ -64,6 +67,9 @@ def cross_validation(data, clf, feature_columns, ycol='log_returns_100+', label=
         results['fnr'][k] = np.sum((pred_y != test_y) & (pred_y == 0)) / np.sum(pred_y == 0)
         results['bpr'][k] = np.sum((pred_y * test_y) == -1) / np.sum(test_y != 0)
         results['gpr'][k] = np.sum((pred_y == test_y) & (test_y != 0)) / np.sum(test_y != 0)
+        results['-1'][k] = np.sum(pred_y == -1)
+        results['0'][k] = np.sum(pred_y == 0)
+        results['1'][k] = np.sum(pred_y == 1)
 
     for col in results:
         if col != 'run':
@@ -99,20 +105,20 @@ for quotes, trades in data:
     features.add_dema(quotes, halflives=hls)
     features.add_momentum(quotes, halflives=hls)
     features.add_log_return_ema(quotes, halflives=hls)
-    features.add_trade_momentum(quotes, trades, bar_width='second')
+    #features.add_trade_momentum(quotes, trades, bar_width='second')
     features.add_price_diff(quotes)
     features.add_size_diff(quotes)
-    features.add_trade_momentum_dema(quotes, trades, halflife=40)
+    #features.add_trade_momentum_dema(quotes, trades, halflife=40)
 
 quotes_list, trades_list = zip(*data)
 
 quotes = pd.concat(quotes_list)
 trades = pd.concat(trades_list)
 
-feature_names = ['momentum', 'dEMA_10', 'dEMA_40', 'dEMA_100', 'trade_momentum',
+feature_names = ['momentum', 'dEMA_10', 'dEMA_40', 'dEMA_100',
                  'log_returns_10-', 'log_returns_40-', 'log_returns_100-',
                  'log_returns_std_10-', 'log_returns_std_40-', 'size_diff',
-                 'price_diff', 'trade_momentum_dema_40']
+                 'price_diff', 'VPIN_TIME']
 
 quotes = quotes.fillna(0)
 
@@ -141,9 +147,9 @@ class LRclf(object):
         return results
 
 print """
-Linear Regression Classifier, 3-class 5-fold CV, no-class weights
+Linear SVM, 3-class 5-fold CV, no-class weights
 """
-thresh = 0.000005
+thresh = 0.000005/2
 print "thresh = {}".format(thresh)
 hl = 100
 K = 5
@@ -152,11 +158,13 @@ quotes['label'] = 0
 quotes.ix[quotes['log_returns_100+'] > thresh, 'label'] = 1
 quotes.ix[quotes['log_returns_100+'] < -thresh, 'label'] = -1
 
-clf = LRclf(thresh)
+#clf = LRclf(thresh)
+
+clf = svm.LinearSVC(class_weight='auto')
 cv_results = cross_validation(quotes, clf, feature_names, label='label', K=5)
-y = quotes['log_returns_{}+'.format(hl)].values
-reg = sm.OLS(y, quotes[feature_names]).fit()
-print reg.summary()
+y = quotes['label'].values
+#reg = sm.OLS(y, quotes[feature_names]).fit()
+#print reg.summary()
 clf_output(cv_results, y, K, feature_names)
 
 
@@ -173,7 +181,7 @@ quotes.ix[quotes['log_returns_100+'] > thresh, 'label'] = 1
 quotes.ix[quotes['log_returns_100+'] < -thresh, 'label'] = -1
 
 clf = LRclf(thresh)
-cv_results = cross_validation(quotes, clf, feature_names, label='label', K=5)
+cv_results = cross_validation(quotes, clf, feature_names, ycol='log_returns_100+', label='label', K=5)
 clf_output(cv_results, y, K, feature_names)
 
 
