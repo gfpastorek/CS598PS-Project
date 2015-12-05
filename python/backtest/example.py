@@ -137,7 +137,7 @@ testing_quotes = testing_quotes.fillna(0)
 # normalize features
 # quotes[feature_names] = (quotes[feature_names] - quotes[feature_names].mean()) / quotes[feature_names].std()
 
-thresh = 0.000005/10
+thresh = 0.000005/2
 label_hl = 100
 training_quotes['label'] = 0
 training_quotes.ix[training_quotes['log_returns_{}+'.format(label_hl)] >= thresh, 'label'] = 1

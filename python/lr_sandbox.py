@@ -14,7 +14,7 @@ import datautils.features as features
 from sklearn import cross_validation, svm
 
 
-def cross_validation(data, clf, feature_columns, label='label', K=5,
+def cross_validation(data, clf, feature_columns, ycol='log_returns_100+', label='label', K=5,
                      fit_method=lambda cl, X, y: cl.fit(X, y),
                      predict_method=lambda cl, X: cl.predict(X)):
     """
@@ -39,7 +39,7 @@ def cross_validation(data, clf, feature_columns, label='label', K=5,
     1           1
     -1          -1
     """
-    data.apply(np.random.shuffle, axis=0)
+    #data.apply(np.random.shuffle, axis=0)
     partitions = np.array_split(data, K)
 
     results = {
@@ -54,7 +54,7 @@ def cross_validation(data, clf, feature_columns, label='label', K=5,
     for k in xrange(K):
         training_data = pd.concat(partitions[:k] + partitions[(k+1):])
         testing_data = partitions[k]
-        train_x, train_y = training_data[feature_columns], training_data[label]
+        train_x, train_y = training_data[feature_columns], training_data[ycol]
         test_x, test_y = testing_data[feature_columns], testing_data[label]
         fit_method(clf, train_x, train_y)
         pred_y = predict_method(clf, test_x)
@@ -73,16 +73,10 @@ def cross_validation(data, clf, feature_columns, label='label', K=5,
 
 
 def clf_output(cv_results, y, K, feature_names, w=None, summary=None):
-    if w is not None:
-        w = w / np.linalg.norm(w)
     print """
                                  Results
 ==============================================================================
     """
-    if w is not None:
-        print pd.DataFrame({'weight{}'.format(i): w[i] for i in xrange(0, len(w))}, index=feature_names)
-    if summary is not None:
-        print summary
     print pd.DataFrame({'%': np.array([len(y[y == -1]),
                                 len(y[y == 0]),
                                 len(y[y == 1])])/len(y)},
@@ -143,13 +137,14 @@ class LRclf(object):
         pred = self.mod.predict(X)
         results = np.zeros(len(pred))
         results[pred >= thresh] = 1
-        results[pred <= thresh] = -1
+        results[pred <= -thresh] = -1
         return results
 
 print """
 Linear Regression Classifier, 3-class 5-fold CV, no-class weights
 """
-thresh = 0.000005/2
+thresh = 0.000005
+print "thresh = {}".format(thresh)
 hl = 100
 K = 5
 
@@ -161,82 +156,39 @@ clf = LRclf(thresh)
 cv_results = cross_validation(quotes, clf, feature_names, label='label', K=5)
 y = quotes['log_returns_{}+'.format(hl)].values
 reg = sm.OLS(y, quotes[feature_names]).fit()
-summary = reg.summary()
-clf_output(cv_results, y, K, feature_names, summary=summary)
+print reg.summary()
+clf_output(cv_results, y, K, feature_names)
+
 
 print """
-SVM, 3-class 5-fold CV, custom-class weights
+Linear Regression Classifier, 3-class 5-fold CV, no-class weights
 """
-class_weights = {
-    -1: 1,
-    0: 2,
-    1: 1
-}
-print "class_weights = " + str(class_weights)
-thresh = 0.000005/2
+thresh = 0.000005*100
+print "thresh = {}".format(thresh)
 hl = 100
 K = 5
+
 quotes['label'] = 0
 quotes.ix[quotes['log_returns_100+'] > thresh, 'label'] = 1
 quotes.ix[quotes['log_returns_100+'] < -thresh, 'label'] = -1
 
-clf = svm.LinearSVC(C=1, class_weight=class_weights)
+clf = LRclf(thresh)
 cv_results = cross_validation(quotes, clf, feature_names, label='label', K=5)
-
-X = quotes[feature_names]
-y = quotes['label']
-
-clf = svm.LinearSVC(C=1, class_weight=class_weights)
-clf.fit(X, y)
-w = clf.coef_
-clf_output(cv_results, y, K, feature_names, w=w)
+clf_output(cv_results, y, K, feature_names)
 
 
 print """
-SVM, 3-class 5-fold CV, custom-class weights
+Linear Regression Classifier, 3-class 5-fold CV, no-class weights
 """
-class_weights = {
-    -1: 1,
-    0: 1,
-    1: 1
-}
-print "class_weights = " + str(class_weights)
-thresh = 0.000005/2
+thresh = 0.00001
+print "thresh = {}".format(thresh)
 hl = 100
 K = 5
+
 quotes['label'] = 0
 quotes.ix[quotes['log_returns_100+'] > thresh, 'label'] = 1
 quotes.ix[quotes['log_returns_100+'] < -thresh, 'label'] = -1
 
-X = quotes[feature_names]
-y = quotes['label']
-
-clf = svm.LinearSVC(C=1, class_weight=class_weights)
+clf = LRclf(thresh)
 cv_results = cross_validation(quotes, clf, feature_names, label='label', K=5)
-
-clf = svm.LinearSVC(C=1, class_weight=class_weights)
-clf.fit(X, y)
-w = clf.coef_
-clf_output(cv_results, y, K, feature_names, w=w)
-
-
-print """
-SVM, 3-class 5-fold CV, auto-class weights
-"""
-thresh = 0.000005/2
-hl = 100
-K = 5
-quotes['label'] = 0
-quotes.ix[quotes['log_returns_100+'] > thresh, 'label'] = 1
-quotes.ix[quotes['log_returns_100+'] < -thresh, 'label'] = -1
-
-X = quotes[feature_names]
-y = quotes['label']
-
-clf = svm.LinearSVC(C=1, class_weight='auto')
-cv_results = cross_validation(quotes, clf, feature_names, label='label', K=5)
-
-clf = svm.LinearSVC(C=1, class_weight='auto')
-clf.fit(X, y)
-w = clf.coef_
-clf_output(cv_results, y, K, feature_names, w=w)
+clf_output(cv_results, y, K, feature_names)
