@@ -101,6 +101,10 @@ def add_trade_momentum_dema(data, trades, halflife=10, bar_width='second', colna
 def add_mid_price(data):
     data['MID_PRICE'] = data['ASK_PRICE']-data['BID_PRICE']
 
+def add_cum_trade_volume(data):
+    pass
+
+
 
 class TestFeatures(unittest.TestCase):
     def test_add_mid_price(self):
