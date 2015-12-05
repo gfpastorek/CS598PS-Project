@@ -66,7 +66,7 @@ def _clean_quotes(data, start_hour=9, start_min=30, end_hour=15, end_min=30, bar
                  'BID_SIZE': 'max'
              })
 
-    return data.reset_index().rename(columns={'level_1': 'DATE_TIME'}).set_index('DATE_TIME', drop=True)
+    return data.reset_index().rename(columns={'level_1': 'DATE_TIME'})
 
 
 def _clean_trades(data, start_hour=9, start_min=30, end_hour=15, end_min=30):
@@ -80,7 +80,7 @@ def _clean_trades(data, start_hour=9, start_min=30, end_hour=15, end_min=30):
     end_time = dt.time(end_hour, end_min, 0, 0)
     data = filter_data_by_time(data, start_time, end_time)
 
-    return data.reset_index().rename(columns={'level_1': 'DATE_TIME'}).set_index('DATE_TIME', drop=True)
+    return data.reset_index().rename(columns={'level_1': 'DATE_TIME'})
 
 
 def get_quotes(ticker, year, month, day, bar_width='second'):
@@ -134,6 +134,21 @@ def get_more_data(tickers, year, month, day, days=1, bar_width='second'):
     return data
 
 
+def get_trades_and_quotes(tickers, year, month, day, days=1, bar_width='second'):
+    data = get_more_data(tickers, year, month, day, days=1, bar_width='second')
+    return merge_trades_and_quotes(data)
+
+
+def merge_trades_and_quotes(data):
+    for i in range(len(data)):
+        trades_and_quotes = data[i]
+        quotes = trades_and_quotes[0]
+        trades = trades_and_quotes[1]
+        merged = pd.ordered_merge(quotes, trades, fill_method='ffill')
+        data[i] = merged
+    return data
+
+
 def get_dev_data():
     f_quotes = "/Users/thibautxiong/Documents/Development/CS598PS-Project/dev_data/xle_02_01_12_quotes_dev.csv"
     quotes = pd.read_csv(f_quotes, parse_dates=[['DATE', 'TIME_M']], date_parser=_convert_time)
@@ -166,26 +181,11 @@ def make_dev_data():
             break
 
 
-def merge_trades_and_quotes(data):
-    for i in range(len(data)):
-        trades_and_quotes = data[i]
-        quotes = trades_and_quotes[0]
-        trades = trades_and_quotes[1]
-        merged = pd.ordered_merge(quotes, trades, fill_method='ffill')
-        data[i] = merged
-    return data
-
-
-def get_test_data():
-    # TODO
-    pass
-
 if __name__ == "__main__":
     pass
-    # data = get_more_data('XLE', 2012, 2, 1, days=1, bar_width='second')
-    # print data[0][0]
-    # make_dev_data()
-    # merge_trades_and_quotes()
+    # data = get_dev_data()
+    # data = merge_trades_and_quotes(data)
+
 
 # import unittest
 #
