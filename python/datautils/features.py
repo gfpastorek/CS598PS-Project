@@ -11,15 +11,14 @@ def generate_features():
     raise NotImplemented("TODO")
 
 
-def add_future_log_returns(data, label_hls=(10, 40, 100)):
 def standardize_features(data, feature_names):
     for feature in feature_names:
+        if data[feature].dtype is not float:
+            data[feature] = data[feature].astype(float)
         sk.preprocessing.scale(data[feature])
-    # data[feature_names] = (data[feature_names] - data[feature_names].mean()) / data[feature_names].std()
 
 
-def label_data(data, label_hls=(10, 40, 100)):
-
+def add_future_log_returns(data, label_hls=(10, 40, 100)):
     data['price'] = (data['BID_PRICE']*data['BID_SIZE'] + data['ASK_PRICE']*data['ASK_SIZE']) / (data['BID_SIZE'] + data['ASK_SIZE'])
     data['log_returns'] = data['log_returns'] = np.concatenate([[0], np.diff(np.log(data['price']))])
 
