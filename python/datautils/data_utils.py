@@ -65,7 +65,8 @@ def _clean_quotes(data, start_hour=9, start_min=30, end_hour=15, end_min=30, bar
                  'ASK_SIZE': 'max',
                  'BID_SIZE': 'max'
              })
-    return data.reset_index().rename(columns={'level_1': 'DATE_TIME'})
+
+    return data.reset_index().rename(columns={'level_1': 'DATE_TIME'}).set_index('DATE_TIME', drop=True)
 
 
 def _clean_trades(data, start_hour=9, start_min=30, end_hour=15, end_min=30):
@@ -79,7 +80,7 @@ def _clean_trades(data, start_hour=9, start_min=30, end_hour=15, end_min=30):
     end_time = dt.time(end_hour, end_min, 0, 0)
     data = filter_data_by_time(data, start_time, end_time)
 
-    return data.reset_index().rename(columns={'level_1': 'DATE_TIME'})
+    return data.reset_index().rename(columns={'level_1': 'DATE_TIME'}).set_index('DATE_TIME', drop=True)
 
 
 def get_quotes(ticker, year, month, day, bar_width='second'):
@@ -135,14 +136,10 @@ def get_more_data(tickers, year, month, day, days=1, bar_width='second'):
 
 def get_dev_data():
     f_quotes = "/Users/thibautxiong/Documents/Development/CS598PS-Project/dev_data/xle_02_01_12_quotes_dev.csv"
-    print "reading dev quotes"
     quotes = pd.read_csv(f_quotes, parse_dates=[['DATE', 'TIME_M']], date_parser=_convert_time)
-    print "cleaning dev quotes"
     quotes = _clean_quotes(quotes, bar_width='second')
     f_trades = "/Users/thibautxiong/Documents/Development/CS598PS-Project/dev_data/xle_02_01_12_trades_dev.csv"
-    print "reading dev trades"
     trades = pd.read_csv(f_trades, parse_dates=[['DATE', 'TIME_M']], date_parser=_convert_time)
-    print "cleaning dev trades"
     trades = _clean_trades(trades)
     data = [(quotes, trades)]
     return data
@@ -177,7 +174,6 @@ def merge_trades_and_quotes(data):
         merged = pd.ordered_merge(quotes, trades, fill_method='ffill')
         data[i] = merged
     return data
-
 
 
 def get_test_data():
