@@ -4,10 +4,17 @@ import numpy as np
 import datetime as dt
 from scipy import stats, spatial
 import unittest
+import sklearn as sk
 
 
 def generate_features():
     raise NotImplemented("TODO")
+
+
+def standardize_features(data, feature_names):
+    for feature in feature_names:
+        sk.preprocessing.scale(data[feature])
+    # data[feature_names] = (data[feature_names] - data[feature_names].mean()) / data[feature_names].std()
 
 
 def label_data(data, label_hls=(10, 40, 100)):
@@ -61,6 +68,7 @@ def add_log_return_ema(data, halflives=(10, 40, 100)):
 
 
 def add_trade_momentum(data, trades, bar_width='second', colname='trade_momentum'):
+    # TODO: refactor this so it works with TAQ data
     minute_bars = (bar_width == 'minute')
     trades = trades.set_index('DATE_TIME')
     trades['PRICExSIZE'] = trades['PRICE'] * trades['SIZE']
