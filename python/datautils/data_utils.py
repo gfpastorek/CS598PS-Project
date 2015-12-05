@@ -65,6 +65,7 @@ def _clean_quotes(data, start_hour=9, start_min=30, end_hour=15, end_min=30, bar
                  'ASK_SIZE': 'max',
                  'BID_SIZE': 'max'
              })
+
     return data.reset_index().rename(columns={'level_1': 'DATE_TIME'})
 
 
@@ -133,27 +134,85 @@ def get_more_data(tickers, year, month, day, days=1, bar_width='second'):
     return data
 
 
-import unittest
+def get_trades_and_quotes(tickers, year, month, day, days=1, bar_width='second'):
+    data = get_more_data(tickers, year, month, day, days=1, bar_width='second')
+    return merge_trades_and_quotes(data)
 
 
-class TestDataUtils(unittest.TestCase):
-    def test_get_test_data(self):
-        # get_data(None, None, None, None)
-        pass
-
-    def test_convert_time(self):
-        date = "20120105"
-        time = "09:30:00.291"
-        dt = _convert_time(date, time)
-        assert dt.year == 2012
-        assert dt.month == 1
-        assert dt.day == 5
-        assert dt.hour == 9
-        assert dt.minute == 30
-        assert dt.second == 0
-
-    def test_filter_data_by_time(self):
-        pass
+def merge_trades_and_quotes(data):
+    for i in range(len(data)):
+        trades_and_quotes = data[i]
+        quotes = trades_and_quotes[0]
+        trades = trades_and_quotes[1]
+        merged = pd.ordered_merge(quotes, trades, fill_method='ffill')
+        data[i] = merged
+    return data
 
 
+def get_dev_data():
+    f_quotes = "/Users/thibautxiong/Documents/Development/CS598PS-Project/dev_data/xle_02_01_12_quotes_dev.csv"
+    quotes = pd.read_csv(f_quotes, parse_dates=[['DATE', 'TIME_M']], date_parser=_convert_time)
+    quotes = _clean_quotes(quotes, bar_width='second')
+    f_trades = "/Users/thibautxiong/Documents/Development/CS598PS-Project/dev_data/xle_02_01_12_trades_dev.csv"
+    trades = pd.read_csv(f_trades, parse_dates=[['DATE', 'TIME_M']], date_parser=_convert_time)
+    trades = _clean_trades(trades)
+    data = [(quotes, trades)]
+    return data
 
+
+def make_dev_data():
+    """
+    make some smaller data sets for dev purposes
+    """
+    quotes = open("/Users/thibautxiong/Documents/Development/CS598PS-Project/data/xle_02_01_12/xle_02_01_12_quotes.csv",
+                  'r')
+    quotes_out = open("/Users/thibautxiong/Documents/Development/CS598PS-Project/data/xle_02_01_12/xle_02_01_12_quotes_dev.csv", 'w')
+    n_quotes = 0
+    for line in quotes:
+        quotes_out.write(line)
+        if n_quotes > 1000:
+            break
+    trades = open("/Users/thibautxiong/Documents/Development/CS598PS-Project/data/xle_02_01_12/xle_02_01_12_trades.csv", 'r')
+    trades_out = open("/Users/thibautxiong/Documents/Development/CS598PS-Project/data/xle_02_01_12/xle_02_01_12_trades_dev.csv", 'w')
+    n_trades = 0
+    for line in trades:
+        trades_out.write(line)
+        if n_trades > 4000:
+            break
+
+
+if __name__ == "__main__":
+    pass
+    # data = get_dev_data()
+    # data = merge_trades_and_quotes(data)
+
+
+# import unittest
+#
+# class TestDataUtils(unittest.TestCase):
+#     def test_make_dev_data(self):
+#         make_dev_data()
+#     def test_get_test_data(self):
+#         # get_data(None, None, None, None)
+#         pass
+#
+#     def test_convert_time(self):
+#         pass
+#         date = "20120105"
+#         time = "09:30:00.291"
+#         dt = _convert_time(date, time)
+#         assert dt.year == 2012
+#         assert dt.month == 1
+#         assert dt.day == 5
+#         assert dt.hour == 9
+#         assert dt.minute == 30
+#         assert dt.second == 0
+#
+#     def test_filter_data_by_time(self):
+#         pass
+#         data = get_more_data('XLE', 2012, 2, 1, days=1, bar_width='second')
+#         print len(data)
+#         print data
+#         merged = merge_trades_and_quotes(data[0], data[1])
+#
+#

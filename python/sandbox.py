@@ -95,7 +95,7 @@ def clf_output(cv_results, y, K, feature_names, w=None, summary=None):
 time_period_cutoffs = (30, 180, 420, 450)
 
 #quotes, trades = get_data('XLE', 2012, 1, 5, bar_width='second')
-data = get_more_data('XLE', 2012, 2, 1, days=1, bar_width='second')
+data = get_more_data('XLE', 2012, 1, 5, days=1, bar_width='second')
 
 hls = [10, 40, 100]
 
