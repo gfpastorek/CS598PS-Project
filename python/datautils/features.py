@@ -12,10 +12,8 @@ def generate_features():
 
 
 def standardize_features(data, feature_names):
-    for feature in feature_names:
-        if data[feature].dtype is not float:
-            data[feature] = data[feature].astype(float)
-        sk.preprocessing.scale(data[feature])
+
+    data[feature_names] = (data[feature_names] - data[feature_names].mean()) / data[feature_names].std()
 
 
 def add_future_log_returns(data, label_hls=(10, 40, 100)):
@@ -127,9 +125,18 @@ def add_rolling_trade_sum(data, window):
 
 def add_vpin_time(data, window):
     def lifts(row):
-        lift = -1
-        if row['PRICE'] == row['ASK_PRICE']:
-            lift = 1
+        lift = 1
+        ask_diff = abs(row['PRICE']-row['ASK_PRICE'])
+        bid_diff = abs(row['PRICE']-row['BID_PRICE'])
+        if ask_diff > bid_diff:
+            lift = -1
+        # lift = 0
+        # if row['PRICE'] == row['ASK_PRICE']:
+        #     lift = 1
+        # elif row['PRICE'] == row['BID_PRICE']:
+        #     lift = -1
+        # if lift == 0:
+        #     print row['PRICE'], 'bid', row['BID_PRICE'], 'ask', row['ASK_PRICE']
         return row['SIZE']*lift
     data['lift'] = data.apply(lifts, axis=1)
     start_dates = data['DATE_TIME'] - window
