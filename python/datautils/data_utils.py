@@ -134,9 +134,12 @@ def get_more_data(tickers, year, month, day, days=1, bar_width='second', **kwarg
     return data
 
 
-def get_trades_and_quotes(tickers, year, month, day, days=1, bar_width='second', **kwargs):
+def get_trades_and_quotes(tickers, year, month, day, days=1, bar_width='second', return_unmerged=False, **kwargs):
     data = get_more_data(tickers, year, month, day, days=days, bar_width=bar_width, **kwargs)
-    return merge_trades_and_quotes(data)
+    if return_unmerged:
+        return merge_trades_and_quotes(data), zip(*data)[0], zip(*data)[1]
+    else:
+        return merge_trades_and_quotes(data)
 
 
 def merge_trades_and_quotes(data):

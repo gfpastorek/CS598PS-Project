@@ -68,7 +68,7 @@ quotes_list, trades_list = zip(*data)
 quotes = pd.concat(quotes_list)
 trades = pd.concat(trades_list)
 
-pnl_history, order_history = backtest(quotes, trades, magic_strategy,
+pnl_history, order_history = backtest(magic_strategy, quotes, trades,
                                       transaction_costs=0.005, slippage_rate=0.25, delay_fill=True)
 
 fig, axes = plt.subplots(nrows=4)

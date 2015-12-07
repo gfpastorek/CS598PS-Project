@@ -15,16 +15,23 @@ def add_future_log_returns(data, label_hls=(10, 40, 100)):
     data['price'] = (data['BID_PRICE']*data['BID_SIZE'] + data['ASK_PRICE']*data['ASK_SIZE']) / (data['BID_SIZE'] + data['ASK_SIZE'])
     data['log_returns'] = data['log_returns'] = np.concatenate([[0], np.diff(np.log(data['price']))])
 
-    # TODO - which halflife to use? Kalman filter?
     for hl in label_hls:
         data['log_returns_{}+'.format(hl)] = \
             np.concatenate([(pd.ewma(data['log_returns'].values[::-1], halflife=hl))[:0:-1], [0]])
-        # TODO - how to get the EWMA decay to match the rolling_std window?
         data['log_returns_std_{}+'.format(hl)] = \
             np.concatenate([(pd.rolling_std(data['log_returns'].values[::-1], 2*hl))[:0:-1], [0]])
 
 
-def add_dema(data, halflives=[10, 40, 100], colname='dEMA'):
+def add_future_log_returns_rolling(data, windows=(10, 40, 100)):
+
+    data['price'] = (data['BID_PRICE']*data['BID_SIZE'] + data['ASK_PRICE']*data['ASK_SIZE']) / (data['BID_SIZE'] + data['ASK_SIZE'])
+    data['log_returns'] = data['log_returns'] = np.concatenate([[0], np.diff(np.log(data['price']))])
+
+    for w in windows:
+        data['log_returns_w{}+'.format(w)] = \
+            np.concatenate([(pd.rolling_mean(data['log_returns'].values[::-1], w))[:0:-1], [0]])
+
+def add_price_dema(data, halflives=[10, 40, 100], colname='dEMA'):
     for hl in halflives:
         ema = pd.ewma(data['price'], halflife=hl)
         data['{}_{}'.format(colname, hl)] = 0
@@ -45,6 +52,14 @@ def add_momentum(data, halflives=[10, 40, 100], colname='momentum'):
         for hl2 in halflives:
             if hl2 < hl1:
                 data[colname] += data['EMA_{}'.format(hl1)] - data['EMA_{}'.format(hl2)]
+    return [colname]
+
+
+def add_dema_sum(data, halflives=[10, 40, 100], colname='dEMA_sum'):
+    add_price_dema(data, halflives=halflives)
+    data[colname] = 0
+    for hl in halflives:
+        data[colname] += data['dEMA_{}'.format(hl)]
     return [colname]
 
 
@@ -94,6 +109,19 @@ def add_trade_momentum_dema(data, trades, halflife=10, bar_width='second', colna
     print "Added {}".format(feat_col_name)
 
 
+def add_dema(data, features, halflife=10):
+    if type(features) == 'str':
+        features = [features]
+    feat_cols = []
+    for feature in features:
+        feat_col_name = '{}_dema_{}'.format(feature, halflife)
+        data[feat_col_name] = 0
+        ema = pd.ewma(data[feature], halflife=halflife)
+        data.ix[1:, feat_col_name] = np.diff(ema)
+        feat_cols.append(feat_col_name)
+    return feat_cols
+
+
 def add_size_diff(data):
     data['size_diff'] = data['BID_SIZE'] - data['ASK_SIZE']
     return ['size_diff']
@@ -118,12 +146,16 @@ def add_rolling_trade_sum(data, window):
     data = data.drop(['start_index', 'end_index'], axis=1, inplace=True)
 
 
-def add_vpin_time(data, window):
+def OLD_add_vpin_time(data, window):
     def lifts(row):
-        lift = -1
         if row['PRICE'] == row['ASK_PRICE']:
             lift = 1
+        elif row['PRICE'] == row['BID_PRICE']:
+            lift = -1
+        else:
+            lift = 0
         return row['SIZE']*lift
+
     data['lift'] = data.apply(lifts, axis=1)
     start_dates = data['DATE_TIME'] - window
     data['start_index'] = data['DATE_TIME'].values.searchsorted(start_dates, side='right')
@@ -140,6 +172,39 @@ def add_vpin_time(data, window):
     data['VPIN_TIME'] = data['lift_sum']/data['trade_sum']
     data.drop(['start_index', 'end_index', 'lift', 'trade_sum', 'lift_sum'], axis=1, inplace=True)
     return ['VPIN_TIME']
+
+
+
+def add_vpin_time(data, window):
+
+    data['lift'] = ((2*data['PRICE'] - data['BID_PRICE'] - data['ASK_PRICE']) > 0).apply(int) * data['SIZE']
+
+    start_dates = data['DATE_TIME'] - window
+    data['start_index'] = data['DATE_TIME'].values.searchsorted(start_dates, side='right')
+    data['end_index'] = np.arange(len(data))
+
+    def sum_window(row):
+        return data['SIZE'].iloc[row['start_index']:row['end_index']+1].sum()
+
+    def sum_lifts(row):
+        return data['lift'].iloc[row['start_index']:row['end_index']+1].sum()
+
+    data['trade_sum'] = data.apply(sum_window, axis=1)
+    data['lift_sum'] = data.apply(sum_lifts, axis=1)
+    data['VPIN_TIME'] = data['lift_sum']/data['trade_sum']
+    data.drop(['start_index', 'end_index', 'lift', 'trade_sum', 'lift_sum'], axis=1, inplace=True)
+    return ['VPIN_TIME']
+
+
+def add_crossover(data, halflives):
+    add_ema(data, halflives)
+    crossover_list = []
+    for hl1 in halflives:
+        for hl2 in halflives:
+            if hl2 < hl1:
+                diffs = ((data['EMA_{}'.format(hl1)] - data['EMA_{}'.format(hl2)]) >= 0).values
+                crossover_list.append(diffs[:-1] ^ diffs[1:])
+    data['crossover?'] = np.concatenate([[False], np.any(crossover_list, 0)])
 
 
 class TestFeatures(unittest.TestCase):

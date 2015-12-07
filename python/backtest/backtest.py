@@ -20,7 +20,7 @@ class Order(object):
         next_order_id += 1
 
 
-def backtest(quotes, trades, strategy, transaction_costs=0.005, slippage_rate=0.25, delay_fill=False, *args, **kwargs):
+def backtest(strategy, quotes, trades=None, transaction_costs=0.005, slippage_rate=0.25, delay_fill=False, *args, **kwargs):
     """
     description: backtest a trading strategy
     inputs:
@@ -51,11 +51,14 @@ def backtest(quotes, trades, strategy, transaction_costs=0.005, slippage_rate=0.
         for i in xrange(0, len(quotes)):
             security_data[quotes.iloc[i]['SYM']] = quotes.iloc[i]
         time = quotes.iloc[0]['DATE_TIME']
-        recent_trades[0] = trades[(trades['DATE_TIME'] >= time) & (trades['DATE_TIME'] < time + timedelta(seconds=1))]
+        if trades is not None:
+            recent_trades[0] = trades[(trades['DATE_TIME'] >= time) & (trades['DATE_TIME'] < time + timedelta(seconds=1))]
         if not delay_fill:
             orders = strategy(security_data, recent_trades[0], positions)
         # process orders
         for order in orders:
+            if order.qty == 0:
+                continue
             sdata = security_data[order.sym]
             positions[order.sym] = positions.get(order.sym, 0) + order.qty
             price = sdata['BID_PRICE'] if order.qty > 0 else sdata['ASK_PRICE']
