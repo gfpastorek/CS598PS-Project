@@ -135,9 +135,9 @@ for data, trades in datas:
     feature_names += features.add_price_diff(data)
     feature_names += features.add_size_diff(data)
     #feature_names += features.add_vpin_time(data, window=dt.timedelta(seconds=20))
-    feature_names += features.add_dema(data, features=['momentum', 'dEMA_10', 'dEMA_40', 'dEMA_100'])
-    feature_names += features.add_dema_sum(data, halflives=hls)
-    #feature_names += add_dema_sum(data, halflives=hls)
+    #feature_names += features.add_dema_sum(data, halflives=hls)
+    feature_names += add_dema_sum(data, halflives=hls)
+    feature_names += features.add_dema(data, features=['momentum', 'dEMA_10', 'dEMA_40', 'dEMA_100', 'dEMA_sum'])
     features.add_crossover(data, halflives=crossover_hls)
 
 

@@ -4,14 +4,19 @@ import numpy as np
 import datetime as dt
 from scipy import stats, spatial
 import unittest
+import sklearn as sk
 
 
 def generate_features():
     raise NotImplemented("TODO")
 
 
-def add_future_log_returns(data, label_hls=(10, 40, 100)):
+def standardize_features(data, feature_names):
 
+    data[feature_names] = (data[feature_names] - data[feature_names].mean()) / data[feature_names].std()
+
+
+def add_future_log_returns(data, label_hls=(10, 40, 100)):
     data['price'] = (data['BID_PRICE']*data['BID_SIZE'] + data['ASK_PRICE']*data['ASK_SIZE']) / (data['BID_SIZE'] + data['ASK_SIZE'])
     data['log_returns'] = data['log_returns'] = np.concatenate([[0], np.diff(np.log(data['price']))])
 
@@ -145,33 +150,6 @@ def add_rolling_trade_sum(data, window):
     data['TRADE_SUM'] = data.apply(sum_window, axis=1)
     data = data.drop(['start_index', 'end_index'], axis=1, inplace=True)
 
-
-def OLD_add_vpin_time(data, window):
-    def lifts(row):
-        if row['PRICE'] == row['ASK_PRICE']:
-            lift = 1
-        elif row['PRICE'] == row['BID_PRICE']:
-            lift = -1
-        else:
-            lift = 0
-        return row['SIZE']*lift
-
-    data['lift'] = data.apply(lifts, axis=1)
-    start_dates = data['DATE_TIME'] - window
-    data['start_index'] = data['DATE_TIME'].values.searchsorted(start_dates, side='right')
-    data['end_index'] = np.arange(len(data))
-
-    def sum_window(row):
-        return data['SIZE'].iloc[row['start_index']:row['end_index']+1].sum()
-
-    def sum_lifts(row):
-        return data['lift'].iloc[row['start_index']:row['end_index']+1].sum()
-
-    data['trade_sum'] = data.apply(sum_window, axis=1)
-    data['lift_sum'] = data.apply(sum_lifts, axis=1)
-    data['VPIN_TIME'] = data['lift_sum']/data['trade_sum']
-    data.drop(['start_index', 'end_index', 'lift', 'trade_sum', 'lift_sum'], axis=1, inplace=True)
-    return ['VPIN_TIME']
 
 
 

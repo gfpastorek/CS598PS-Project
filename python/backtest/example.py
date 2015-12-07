@@ -119,15 +119,16 @@ for data, trades in datas:
     feature_names += features.add_log_return_ema(data, halflives=hls)
     feature_names += features.add_price_diff(data)
     feature_names += features.add_size_diff(data)
-    feature_names += features.add_dema(data, features=['momentum', 'dEMA_10', 'dEMA_40', 'dEMA_100'])
-    features.add_crossover(data, halflives=(10, 100))
+    feature_names += features.add_dema_sum(data, halflives=hls)
+    feature_names += features.add_dema(data, features=['momentum', 'dEMA_10', 'dEMA_40', 'dEMA_100', 'dEMA_sum'])
+    features.add_crossover(data, halflives=(10, 40))
 
 datas = zip(*datas)[0]
 
 feature_names = list(set(feature_names))
 
 test_ind = -1
-thresh = 0.000005
+thresh = 0.000005*2
 pred_col = 'log_returns_10+'
 
 training_data = pd.concat(datas[:test_ind] + datas[test_ind+1:]).fillna(0)
