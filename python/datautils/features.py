@@ -36,6 +36,7 @@ def add_future_log_returns_rolling(data, windows=(10, 40, 100)):
         data['log_returns_w{}+'.format(w)] = \
             np.concatenate([(pd.rolling_mean(data['log_returns'].values[::-1], w))[:0:-1], [0]])
 
+
 def add_price_dema(data, halflives=[10, 40, 100], colname='dEMA'):
     for hl in halflives:
         ema = pd.ewma(data['price'], halflife=hl)
@@ -57,14 +58,6 @@ def add_momentum(data, halflives=[10, 40, 100], colname='momentum'):
         for hl2 in halflives:
             if hl2 < hl1:
                 data[colname] += data['EMA_{}'.format(hl1)] - data['EMA_{}'.format(hl2)]
-    return [colname]
-
-
-def add_dema_sum(data, halflives=[10, 40, 100], colname='dEMA_sum'):
-    add_price_dema(data, halflives=halflives)
-    data[colname] = 0
-    for hl in halflives:
-        data[colname] += data['dEMA_{}'.format(hl)]
     return [colname]
 
 
@@ -151,8 +144,6 @@ def add_rolling_trade_sum(data, window):
     data = data.drop(['start_index', 'end_index'], axis=1, inplace=True)
 
 
-
-
 def add_vpin_time(data, window):
 
     data['lift'] = ((2*data['PRICE'] - data['BID_PRICE'] - data['ASK_PRICE']) > 0).apply(int) * data['SIZE']
@@ -174,7 +165,7 @@ def add_vpin_time(data, window):
     return ['VPIN_TIME']
 
 
-def add_crossover(data, halflives):
+def add_crossover_filter(data, halflives):
     add_ema(data, halflives)
     crossover_list = []
     for hl1 in halflives:
@@ -183,6 +174,31 @@ def add_crossover(data, halflives):
                 diffs = ((data['EMA_{}'.format(hl1)] - data['EMA_{}'.format(hl2)]) >= 0).values
                 crossover_list.append(diffs[:-1] ^ diffs[1:])
     data['crossover?'] = np.concatenate([[False], np.any(crossover_list, 0)])
+    return ['crossover?']
+
+
+def add_high_momentum_filter(data, cutoff=0.1, halflives=(10, 40, 100)):
+    add_momentum(data, halflives=halflives)
+    high_momentum = (abs(data['momentum']) >= cutoff).values
+    change_points = high_momentum[1:] ^ high_momentum[:-1]
+    data['high_momentum?'] = np.concatenate([[False], change_points])
+    return ['high_momentum?']
+
+
+def add_dema_sign_change_filter(data, halflife):
+    add_price_dema(data, halflives=[halflife])
+    positive_dema = (data['dEMA_{}'.format(halflife)] > 0).values
+    change_points = positive_dema[1:] ^ positive_dema[:-1]
+    data['dEMA_{}_sign_change?'.format(halflife)] = np.concatenate([[False], change_points])
+    return ['dEMA_{}_sign_change?'.format(halflife)]
+
+
+def add_dmtm(data, halflives=[40, 100, 200]):
+    for hl in halflives:
+        dm = pd.ewma(np.diff(data['price']), halflife=hl)
+        tm = pd.ewma(np.abs(np.diff(data['price'])), halflife=hl)
+        data['dmtm_{}'.format(hl)] = np.concatenate([[0], dm / tm])
+    return ['dmtm_{}'.format(hl) for hl in halflives]
 
 
 class TestFeatures(unittest.TestCase):

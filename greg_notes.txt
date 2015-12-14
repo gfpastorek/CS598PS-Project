@@ -14,7 +14,12 @@
 --filtered the data by only looking at instances where the EMA_10 and EMA_40 crossover.  Got a much better good-prediction ratio vs bad-prediction ratio
 --false positives are still high
 
+12/7:
+--did some tests on crossover-filtered SVM, results look good especially for pred_col = log_returns_10+
+--did some backtests as well, we seem to be learning a momentum following strategy
 
+
+#####################crossover-filtered SVM results
 
 ######EXPERIMENT WITH 29 DAYS, QUOTES NOT MERGED DATA################
 
@@ -839,5 +844,494 @@ run
 4      0.605058  0.528407  0.094118  0.245955  0.619512  0.458824
 5      0.547758  0.532616  0.140625  0.266129  0.626415  0.515625
 Total  0.547295  0.510202  0.125940  0.295994  0.624066  0.471173
+[]
+==============================================================================
+
+
+Filtered-data Linear SVM, 3-class 5-fold CV, auto class weights
+
+crossover_hls = (10, 40)
+Pred_col = log_returns_10+
+thresh = 5e-06
+
+                                 Results
+==============================================================================
+    
+           %
+-1  0.310627
+ 0  0.349942
+ 1  0.339432
+                      values
+Training Size / Fold  2055.2
+            acc      acc*       bpr       fnr       fpr       gpr
+run                                                              
+1      0.447471  0.445481  0.252174  0.620690  0.532663  0.539130
+2      0.461089  0.464110  0.254491  0.550847  0.535354  0.550898
+3      0.474708  0.479425  0.241791  0.543860  0.520000  0.573134
+4      0.461089  0.467259  0.209726  0.577181  0.523288  0.528875
+5      0.438596  0.448434  0.281346  0.564103  0.560920  0.584098
+Total  0.456591  0.460942  0.247906  0.571336  0.534445  0.555227
+                            -1         0         1
+size_diff            -0.156352  0.001705  0.165180
+dEMA_100              0.294564 -0.244178  0.008518
+log_returns_std_100- -0.008795  0.000093  0.008795
+log_returns_std_10-  -0.012677 -0.005754  0.020492
+dEMA_sum_dema_10      0.002478 -0.065549  0.067727
+dEMA_10              -0.659171  0.185620  0.425127
+log_returns_100-      0.299967 -0.298903 -0.005761
+log_returns_std_40-   0.040256 -0.035059 -0.001325
+log_returns_10-       0.743423  0.022563 -0.799552
+dEMA_40               0.025498  0.139767 -0.138756
+momentum_dema_10     -0.111552  0.172168 -0.080555
+dEMA_sum             -0.338494  0.107900  0.219771
+log_returns_40-      -0.428712  0.243718  0.241868
+dEMA_10_dema_10      -0.075889 -0.177339  0.279431
+dEMA_100_dema_10     -0.343266  0.391909 -0.110936
+price_diff            0.041319 -0.045751 -0.001361
+momentum              0.345263 -0.365724  0.051310
+dEMA_40_dema_10       0.449421 -0.275041 -0.146725
+==============================================================================
+C:\Program Files (x86)\JetBrains\PyCharm Community Edition 4.5.4\helpers\pydev\pydevconsole.py:32: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+  except NameError: # version < 2.3 -- didn't have the True/False builtins
+
+Filtered-data Linear SVM, 3-class 5-fold CV, auto class weights
+
+crossover_hls = (10, 40)
+Pred_col = log_returns_10+
+thresh = 1e-05
+
+                                 Results
+==============================================================================
+    
+           %
+-1  0.182172
+ 0  0.618529
+ 1  0.199299
+                      values
+Training Size / Fold  2055.2
+            acc      acc*       bpr       fnr       fpr       gpr
+run                                                              
+1      0.583658  0.473339  0.046083  0.372603  0.523490  0.327189
+2      0.638132  0.500233  0.049751  0.322078  0.480620  0.333333
+3      0.618677  0.498769  0.050000  0.325137  0.520270  0.355000
+4      0.667315  0.492582  0.041176  0.272727  0.533898  0.323529
+5      0.633528  0.514581  0.046875  0.303867  0.516556  0.380208
+Total  0.628262  0.495901  0.046777  0.319282  0.514967  0.343852
+                            -1         0         1
+size_diff            -0.114131 -0.005206  0.144007
+dEMA_100              0.270574 -0.067298 -0.115885
+log_returns_std_100- -0.011730  0.017874 -0.011323
+log_returns_std_10-  -0.001868 -0.015673  0.031920
+dEMA_sum_dema_10     -0.119961  0.061558  0.030839
+dEMA_10              -0.277115 -0.130789  0.462758
+log_returns_100-      0.245672 -0.029988 -0.241593
+log_returns_std_40-   0.069404 -0.083389  0.031068
+log_returns_10-       0.806820  0.075585 -0.952437
+dEMA_40               0.017827 -0.050706  0.054074
+momentum_dema_10      0.224390 -0.129089 -0.027000
+dEMA_sum             -0.113011 -0.106632  0.275325
+log_returns_40-      -0.514987 -0.071380  0.684131
+dEMA_10_dema_10      -0.455337  0.197733  0.169270
+dEMA_100_dema_10     -0.035483  0.005172  0.007740
+price_diff            0.047537 -0.060904  0.016562
+momentum              0.517661 -0.179281 -0.243475
+dEMA_40_dema_10       0.403131 -0.133831 -0.191325
+==============================================================================
+C:\Program Files (x86)\JetBrains\PyCharm Community Edition 4.5.4\helpers\pydev\pydevconsole.py:59: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+  """
+
+Filtered-data Rbf SVM, 3-class 5-fold CV, auto class weights
+
+crossover_hls = (10, 40)
+Pred_col = log_returns_10+
+thresh = 5e-06
+
+                                 Results
+==============================================================================
+    
+           %
+-1  0.310627
+ 0  0.349942
+ 1  0.339432
+                      values
+Training Size / Fold  2055.2
+            acc      acc*       bpr       fnr       fpr       gpr
+run                                                              
+1      0.451362  0.451940  0.171014  0.616379  0.492908  0.414493
+2      0.466926  0.464325  0.137725  0.592308  0.472441  0.401198
+3      0.503891  0.501888  0.140299  0.560669  0.440000  0.459701
+4      0.463035  0.459472  0.136778  0.595833  0.485401  0.428571
+5      0.473684  0.472463  0.189602  0.551402  0.508361  0.449541
+Total  0.471780  0.470018  0.155084  0.583318  0.479822  0.430701
+[]
+==============================================================================
+C:\Program Files (x86)\JetBrains\PyCharm Community Edition 4.5.4\helpers\pydev\pydevconsole.py:83: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+  from pydev_imports import execfile
+
+Filtered-data Rbf SVM, 3-class 5-fold CV, auto class weights
+
+crossover_hls = (10, 40)
+Pred_col = log_returns_10+
+thresh = 1e-05
+
+                                 Results
+==============================================================================
+    
+           %
+-1  0.182172
+ 0  0.618529
+ 1  0.199299
+                      values
+Training Size / Fold  2055.2
+            acc      acc*       bpr       fnr       fpr       gpr
+run                                                              
+1      0.484436  0.480830  0.165899  0.346847  0.643836  0.479263
+2      0.548638  0.489642  0.104478  0.326531  0.618182  0.417910
+3      0.546693  0.511306  0.125000  0.302239  0.617886  0.470000
+4      0.607004  0.526799  0.094118  0.246795  0.618812  0.452941
+5      0.549708  0.533654  0.145833  0.262097  0.626415  0.515625
+Total  0.547296  0.508446  0.127065  0.296902  0.625026  0.467148
+[]
+==============================================================================
+
+
+
+
+Filtered-data Linear SVM, 3-class 5-fold CV, auto class weights
+
+crossover_hls = (10, 40)
+Pred_col = log_returns_10+
+thresh = 5e-06
+C = 0.1
+
+                                 Results
+==============================================================================
+    
+           %
+-1  0.310627
+ 0  0.349942
+ 1  0.339432
+                      values
+Training Size / Fold  2055.2
+            acc      acc*       bpr       fnr       fpr       gpr
+run                                                              
+1      0.439689  0.437332  0.260870  0.633028  0.540741  0.539130
+2      0.476654  0.480298  0.254491  0.517857  0.524876  0.571856
+3      0.468872  0.473996  0.244776  0.555556  0.524631  0.576119
+4      0.455253  0.462507  0.197568  0.605634  0.521505  0.541033
+5      0.450292  0.460752  0.275229  0.538462  0.551724  0.596330
+Total  0.458152  0.462977  0.246587  0.570107  0.532695  0.564894
+                            -1         0         1
+size_diff            -0.152768  0.002531  0.161875
+dEMA_100              0.216596 -0.024043 -0.096775
+log_returns_std_100- -0.015190  0.004424  0.010191
+log_returns_std_10-  -0.013013 -0.005627  0.019390
+dEMA_sum_dema_10     -0.064834 -0.006905  0.060216
+dEMA_10              -0.402948  0.001618  0.344933
+log_returns_100-      0.026381 -0.168012  0.120482
+log_returns_std_40-   0.043745 -0.034606 -0.001158
+log_returns_10-       0.591416  0.078249 -0.682246
+dEMA_40               0.021104 -0.000093  0.080013
+momentum_dema_10      0.020090  0.045069 -0.056009
+dEMA_sum             -0.198543 -0.003506  0.214780
+log_returns_40-      -0.004117  0.047718 -0.023230
+dEMA_10_dema_10      -0.241216 -0.019377  0.248243
+dEMA_100_dema_10      0.088362  0.041181 -0.155411
+price_diff            0.040731 -0.044140 -0.001714
+momentum              0.136766 -0.151366  0.075793
+dEMA_40_dema_10       0.111893 -0.027695 -0.078543
+==============================================================================
+C:\Program Files (x86)\JetBrains\PyCharm Community Edition 4.5.4\helpers\pydev\pydevconsole.py:35: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+  setattr(__builtin__, 'True', 1) #Python 3.0 does not accept __builtin__.True = 1 in its syntax
+
+Filtered-data Linear SVM, 3-class 5-fold CV, auto class weights
+
+crossover_hls = (10, 40)
+Pred_col = log_returns_10+
+thresh = 1e-05
+C = 0.1
+
+                                 Results
+==============================================================================
+    
+           %
+-1  0.182172
+ 0  0.618529
+ 1  0.199299
+                      values
+Training Size / Fold  2055.2
+            acc      acc*       bpr       fnr       fpr       gpr
+run                                                              
+1      0.579767  0.464946  0.050691  0.375000  0.534247  0.313364
+2      0.634241  0.498103  0.049751  0.323760  0.488550  0.333333
+3      0.616732  0.490822  0.050000  0.328841  0.524476  0.340000
+4      0.669261  0.496968  0.041176  0.270886  0.529412  0.329412
+5      0.639376  0.512527  0.046875  0.303523  0.506944  0.369792
+Total  0.627875  0.492673  0.047699  0.320402  0.516726  0.337180
+
+                            -1         0         1
+size_diff            -0.111966 -0.002765  0.141653
+dEMA_100              0.203998 -0.009868 -0.070931
+log_returns_std_100- -0.017703  0.023513 -0.008696
+log_returns_std_10-  -0.000723 -0.016739  0.030174
+dEMA_sum_dema_10     -0.082711  0.014454  0.045375
+dEMA_10              -0.310190 -0.049934  0.334458
+log_returns_100-     -0.008127 -0.051585  0.041364
+log_returns_std_40-   0.067045 -0.074853  0.030422
+log_returns_10-       0.597189  0.062221 -0.704647
+dEMA_40               0.011840 -0.023085  0.132523
+momentum_dema_10      0.098027 -0.007380 -0.060723
+dEMA_sum             -0.147198 -0.038851  0.228401
+log_returns_40-       0.016477 -0.040039  0.065173
+dEMA_10_dema_10      -0.289868  0.039880  0.215210
+dEMA_100_dema_10      0.165614 -0.026960 -0.144743
+price_diff            0.047684 -0.060258  0.017889
+momentum              0.194172 -0.079507 -0.011332
+dEMA_40_dema_10       0.064286  0.005321 -0.082036
+==============================================================================
+C:\Program Files (x86)\JetBrains\PyCharm Community Edition 4.5.4\helpers\pydev\pydevconsole.py:63: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+  
+
+Filtered-data Rbf SVM, 3-class 5-fold CV, auto class weights
+
+crossover_hls = (10, 40)
+Pred_col = log_returns_10+
+thresh = 5e-06
+C = 0.1
+
+                                 Results
+==============================================================================
+    
+           %
+-1  0.310627
+ 0  0.349942
+ 1  0.339432
+                      values
+Training Size / Fold  2055.2
+            acc      acc*       bpr       fnr       fpr       gpr
+run                                                              
+1      0.466926  0.465091  0.214493  0.589595  0.504399  0.489855
+2      0.441634  0.441819  0.209581  0.609467  0.533333  0.482036
+3      0.470817  0.472700  0.214925  0.563636  0.512894  0.507463
+4      0.416342  0.414052  0.279635  0.566474  0.592375  0.422492
+5      0.430799  0.433327  0.311927  0.514925  0.588391  0.477064
+Total  0.445304  0.445398  0.246112  0.568820  0.546278  0.475782
+[]
+==============================================================================
+C:\Program Files (x86)\JetBrains\PyCharm Community Edition 4.5.4\helpers\pydev\pydevconsole.py:88: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+  
+
+Filtered-data Rbf SVM, 3-class 5-fold CV, auto class weights
+
+crossover_hls = (10, 40)
+Pred_col = log_returns_10+
+thresh = 1e-05
+C = 0.1
+
+                                 Results
+==============================================================================
+    
+           %
+-1  0.182172
+ 0  0.618529
+ 1  0.199299
+                      values
+Training Size / Fold  2055.2
+            acc      acc*       bpr       fnr       fpr       gpr
+run                                                              
+1      0.464981  0.471607  0.193548  0.341584  0.660256  0.488479
+2      0.451362  0.455275  0.208955  0.321951  0.699029  0.462687
+3      0.476654  0.476763  0.190000  0.308756  0.680135  0.475000
+4      0.498054  0.468278  0.205882  0.246862  0.723636  0.447059
+5      0.438596  0.463256  0.244792  0.277778  0.714715  0.494792
+Total  0.465929  0.467036  0.208636  0.299386  0.695554  0.473603
+[]
+==============================================================================
+
+
+
+Filtered-data Linear SVM, 3-class 5-fold CV, auto class weights
+
+crossover_hls = (10, 40)
+Pred_col = log_returns_10+
+thresh = 5e-06
+C = 10
+
+                                 Results
+==============================================================================
+    
+           %
+-1  0.310627
+ 0  0.349942
+ 1  0.339432
+                      values
+Training Size / Fold  2055.2
+            acc      acc*       bpr       fnr       fpr       gpr
+run                                                              
+1      0.449416  0.446830  0.217391  0.632653  0.517711  0.513043
+2      0.457198  0.459638  0.248503  0.559701  0.536842  0.526946
+3      0.455253  0.459401  0.247761  0.573770  0.535714  0.543284
+4      0.486381  0.487392  0.161094  0.565000  0.480892  0.495441
+5      0.436647  0.444725  0.250765  0.596330  0.554455  0.550459
+Total  0.456979  0.459597  0.225103  0.585491  0.525123  0.525835
+                            -1         0         1
+size_diff            -0.153041 -0.002297  0.171462
+dEMA_100              0.478226 -1.030415  0.550967
+log_returns_std_100- -0.003176 -0.006367  0.010881
+log_returns_std_10-  -0.011984 -0.002910  0.018273
+dEMA_sum_dema_10      0.082320 -0.328082  0.214640
+dEMA_10              -0.763133  0.776465  0.198409
+log_returns_100-      0.478187 -0.345492 -0.147814
+log_returns_std_40-   0.024169 -0.036444  0.003958
+log_returns_10-       0.793714 -0.006404 -0.858410
+dEMA_40              -0.325342  0.925165 -0.828430
+momentum_dema_10     -0.256342  0.816406 -0.481776
+dEMA_sum             -0.469063  0.548181 -0.016810
+log_returns_40-      -0.582938  0.336536  0.449542
+dEMA_10_dema_10       0.124243 -1.011045  0.818181
+dEMA_100_dema_10     -0.701633  1.197821 -0.359812
+price_diff            0.013547 -0.052478  0.002546
+momentum              0.542574 -0.698799  0.159715
+dEMA_40_dema_10       0.703392 -0.472648 -0.342728
+==============================================================================
+C:\Program Files (x86)\JetBrains\PyCharm Community Edition 4.5.4\helpers\pydev\pydevconsole.py:35: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+  setattr(__builtin__, 'True', 1) #Python 3.0 does not accept __builtin__.True = 1 in its syntax
+
+Filtered-data Linear SVM, 3-class 5-fold CV, auto class weights
+
+crossover_hls = (10, 40)
+Pred_col = log_returns_10+
+thresh = 1e-05
+C = 10
+
+                                 Results
+==============================================================================
+    
+           %
+-1  0.182172
+ 0  0.618529
+ 1  0.199299
+                      values
+Training Size / Fold  2055.2
+            acc      acc*       bpr       fnr       fpr       gpr
+run                                                              
+1      0.583658  0.456620  0.032258  0.382812  0.515385  0.290323
+2      0.622568  0.459499  0.034826  0.345588  0.500000  0.263682
+3      0.622568  0.485848  0.055000  0.328084  0.518797  0.320000
+4      0.661479  0.499144  0.058824  0.264398  0.553030  0.347059
+5      0.641326  0.515860  0.057292  0.297814  0.510204  0.375000
+Total  0.626320  0.483394  0.047640  0.323739  0.519483  0.319213
+                            -1         0         1
+size_diff            -0.111367 -0.010855  0.147457
+dEMA_100              0.170594 -0.103823 -0.045939
+log_returns_std_100-  0.008244  0.002165  0.002442
+log_returns_std_10-  -0.019375 -0.001518  0.027115
+dEMA_sum_dema_10     -0.275232  0.210736  0.018228
+dEMA_10               0.198217 -0.779088  0.786482
+log_returns_100-      0.421848  0.029233 -0.545329
+log_returns_std_40-   0.034077 -0.080508  0.034964
+log_returns_10-       0.889909  0.185118 -1.206060
+dEMA_40              -0.111331  0.442808 -0.420898
+momentum_dema_10      0.653642 -0.573451  0.018270
+dEMA_sum              0.119905 -0.364591  0.347626
+log_returns_40-      -0.791813 -0.309593  1.378443
+dEMA_10_dema_10      -1.032293  0.783053  0.113762
+dEMA_100_dema_10     -0.092142 -0.004674  0.331565
+price_diff            0.047202 -0.061482  0.029415
+momentum              0.806645 -0.415158 -0.387478
+dEMA_40_dema_10       0.913532 -0.618635 -0.433448
+==============================================================================
+C:\Program Files (x86)\JetBrains\PyCharm Community Edition 4.5.4\helpers\pydev\pydevconsole.py:63: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+  
+
+Filtered-data Rbf SVM, 3-class 5-fold CV, auto class weights
+
+crossover_hls = (10, 40)
+Pred_col = log_returns_10+
+thresh = 5e-06
+C = 10
+
+                                 Results
+==============================================================================
+    
+           %
+-1  0.310627
+ 0  0.349942
+ 1  0.339432
+                      values
+Training Size / Fold  2055.2
+            acc      acc*       bpr       fnr       fpr       gpr
+run                                                              
+1      0.445525  0.444995  0.150725  0.645455  0.486395  0.437681
+2      0.433852  0.431507  0.200599  0.598214  0.541379  0.398204
+3      0.494163  0.493328  0.143284  0.573333  0.453287  0.471642
+4      0.478599  0.475017  0.109422  0.593625  0.452471  0.437690
+5      0.448343  0.447944  0.195719  0.580488  0.532468  0.440367
+Total  0.460097  0.458558  0.159950  0.598223  0.493200  0.437117
+[]
+==============================================================================
+C:\Program Files (x86)\JetBrains\PyCharm Community Edition 4.5.4\helpers\pydev\pydevconsole.py:88: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+  
+
+Filtered-data Rbf SVM, 3-class 5-fold CV, auto class weights
+
+crossover_hls = (10, 40)
+Pred_col = log_returns_10+
+thresh = 1e-05
+C = 10
+
+                                 Results
+==============================================================================
+    
+           %
+-1  0.182172
+ 0  0.618529
+ 1  0.199299
+                      values
+Training Size / Fold  2055.2
+            acc      acc*       bpr       fnr       fpr       gpr
+run                                                              
+1      0.468872  0.461070  0.133641  0.384279  0.649123  0.460829
+2      0.523346  0.457272  0.124378  0.341297  0.656109  0.378109
+3      0.536965  0.502118  0.120000  0.313433  0.626016  0.460000
+4      0.607004  0.519965  0.094118  0.250000  0.621212  0.441176
+5      0.526316  0.499380  0.109375  0.310345  0.642857  0.468750
+Total  0.532501  0.487961  0.116302  0.319871  0.639063  0.441773
 []
 ==============================================================================

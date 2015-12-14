@@ -124,6 +124,8 @@ datas = get_more_data('XLE', 2012, 2, 1, days=29, bar_width='second', start_hour
 hls = [10, 40, 100]
 crossover_hls = (10, 40)
 
+filter_feature_names = []
+#filter_feature_names = ['crossover?', 'high_momentum?', 'dEMA_10_sign_change?', 'dEMA_40_sign_change?']
 feature_names = []
 
 for data, trades in datas:
@@ -135,10 +137,15 @@ for data, trades in datas:
     feature_names += features.add_price_diff(data)
     feature_names += features.add_size_diff(data)
     #feature_names += features.add_vpin_time(data, window=dt.timedelta(seconds=20))
-    #feature_names += features.add_dema_sum(data, halflives=hls)
-    feature_names += add_dema_sum(data, halflives=hls)
-    feature_names += features.add_dema(data, features=['momentum', 'dEMA_10', 'dEMA_40', 'dEMA_100', 'dEMA_sum'])
-    features.add_crossover(data, halflives=crossover_hls)
+    feature_names += features.add_dema(data, features=['momentum', 'dEMA_10', 'dEMA_40', 'dEMA_100'])
+    #filter_feature_names += features.add_crossover_filter(data, halflives=crossover_hls)
+    #filter_feature_names += features.add_high_momentum_filter(data, cutoff=0.1, halflives=(10, 40, 100))
+    #filter_feature_names += features.add_dema_sign_change_filter(data, halflife=10)
+    #filter_feature_names += features.add_dema_sign_change_filter(data, halflife=40)
+    features.add_crossover_filter(data, halflives=crossover_hls)
+    features.add_high_momentum_filter(data, cutoff=0.1, halflives=(10, 40, 100))
+    add_dema_sign_change_filter(data, halflife=10)
+    add_dema_sign_change_filter(data, halflife=40)
 
 
 feature_names = list(set(feature_names))
@@ -154,70 +161,29 @@ data = data.fillna(0)
 # normalize features
 data[feature_names] = (data[feature_names] - data[feature_names].mean()) / data[feature_names].std()
 
+feature_names += filter_feature_names
 
 pred_col = 'log_returns_10+'
 #pred_col = 'log_returns_40+'
 #pred_col = 'log_returns_100+'
 
 
-if DO_UNFILTERED:
-    print """
-    Linear SVM, 3-class 5-fold CV, auto class weights
-    """
-    print "crossover_hls = {}".format(crossover_hls)
-    print "Pred_col = {}".format(pred_col)
+#filtered_data = data[data['crossover?'] == True]
+#filtered_data = data[data['high_momentum?'] == True]
+#filtered_data = data[data['dEMA_10_sign_change?'] == True]
+#filtered_data = data[data['dEMA_40_sign_change?'] == True]
 
-    thresh = 0.000005/2
-    hl = 100
-    K = 5
+#filtered_data = data[data['crossover?'] | data['high_momentum?'] | data['dEMA_10_sign_change?'] | data['dEMA_40_sign_change?']]
+#filtered_data = data[data['crossover?']| data['dEMA_10_sign_change?'] | data['dEMA_40_sign_change?']]
+filtered_data = data[data['crossover?'] | data['high_momentum?'] | data['dEMA_40_sign_change?']]
 
-    data['label'] = 0
-    data.ix[data[pred_col] > thresh, 'label'] = 1
-    data.ix[data[pred_col] < -thresh, 'label'] = -1
-
-    #clf = LRclf(thresh)
-
-    clf = svm.LinearSVC(C=1.0, class_weight='auto')
-    cv_results = cross_validation(data, clf, feature_names, label='label', K=5)
-    y = data['label'].values
-    #reg = sm.OLS(y, quotes[feature_names]).fit()
-    #print reg.summary()
-    print "thresh = {}".format(thresh)
-    clf_output(cv_results, y, K)
-
-
-
-filtered_data = data[data['crossover?'] == True]
 
 # TODO - expand this filter to include n seconds after the crossover
 # TODO - try to get points before the crossover
 # TODO - experiment with different crossovers, include all crossovers from a set of EMAs
 # TODO - look at second derivatives
 
-#run 1
-thresh = 0.000005/2
-hl = 100
-K = 5
-
-filtered_data['label'] = 0
-filtered_data.ix[filtered_data[pred_col] > thresh, 'label'] = 1
-filtered_data.ix[filtered_data[pred_col] < -thresh, 'label'] = -1
-
-#clf = LRclf(thresh)
-
-clf = svm.LinearSVC(C=1.0, class_weight='auto')
-cv_results = cross_validation(filtered_data, clf, feature_names, label='label', K=5)
-y = filtered_data['label'].values
-#reg = sm.OLS(y, quotes[feature_names]).fit()
-#print reg.summary()
-
-print """
-Filtered-data Linear SVM, 3-class 5-fold CV, auto class weights
-"""
-print "crossover_hls = {}".format(crossover_hls)
-print "Pred_col = {}".format(pred_col)
-print "thresh = {}".format(thresh)
-clf_output(cv_results, y, K)
+c = 1
 
 #run 2
 thresh = 0.000005
@@ -225,12 +191,12 @@ hl = 100
 K = 5
 
 filtered_data['label'] = 0
-filtered_data.ix[filtered_data[pred_col] > thresh, 'label'] = 1
-filtered_data.ix[filtered_data[pred_col] < -thresh, 'label'] = -1
+filtered_data.loc[filtered_data[pred_col] > thresh, 'label'] = 1
+filtered_data.loc[filtered_data[pred_col] < -thresh, 'label'] = -1
 
 #clf = LRclf(thresh)
 
-clf = svm.LinearSVC(C=1.0, class_weight='auto')
+clf = svm.LinearSVC(C=c, class_weight='auto')
 cv_results = cross_validation(filtered_data, clf, feature_names, label='label', K=5)
 y = filtered_data['label'].values
 #reg = sm.OLS(y, quotes[feature_names]).fit()
@@ -242,6 +208,7 @@ Filtered-data Linear SVM, 3-class 5-fold CV, auto class weights
 print "crossover_hls = {}".format(crossover_hls)
 print "Pred_col = {}".format(pred_col)
 print "thresh = {}".format(thresh)
+print "C = {}".format(c)
 clf_output(cv_results, y, K)
 
 
@@ -251,12 +218,12 @@ hl = 100
 K = 5
 
 filtered_data['label'] = 0
-filtered_data.ix[filtered_data[pred_col] > thresh, 'label'] = 1
-filtered_data.ix[filtered_data[pred_col] < -thresh, 'label'] = -1
+filtered_data.loc[filtered_data[pred_col] > thresh, 'label'] = 1
+filtered_data.loc[filtered_data[pred_col] < -thresh, 'label'] = -1
 
 #clf = LRclf(thresh)
 
-clf = svm.LinearSVC(C=1.0, class_weight='auto')
+clf = svm.LinearSVC(C=c, class_weight='auto')
 cv_results = cross_validation(filtered_data, clf, feature_names, label='label', K=5)
 y = filtered_data['label'].values
 #reg = sm.OLS(y, quotes[feature_names]).fit()
@@ -268,32 +235,10 @@ Filtered-data Linear SVM, 3-class 5-fold CV, auto class weights
 print "crossover_hls = {}".format(crossover_hls)
 print "Pred_col = {}".format(pred_col)
 print "thresh = {}".format(thresh)
+print "C = {}".format(c)
 clf_output(cv_results, y, K)
 
 
-
-#run 1
-thresh = 0.000005/2
-hl = 100
-K = 5
-
-filtered_data['label'] = 0
-filtered_data.ix[filtered_data[pred_col] > thresh, 'label'] = 1
-filtered_data.ix[filtered_data[pred_col] < -thresh, 'label'] = -1
-
-clf = svm.SVC(C=1.0, kernel='rbf', class_weight='auto')
-cv_results = cross_validation(filtered_data, clf, feature_names, label='label', K=5)
-y = filtered_data['label'].values
-#reg = sm.OLS(y, quotes[feature_names]).fit()
-#print reg.summary()
-
-print """
-Filtered-data Rbf SVM, 3-class 5-fold CV, auto class weights
-"""
-print "crossover_hls = {}".format(crossover_hls)
-print "Pred_col = {}".format(pred_col)
-print "thresh = {}".format(thresh)
-clf_output(cv_results, y, K)
 
 #run 2
 thresh = 0.000005
@@ -301,10 +246,10 @@ hl = 100
 K = 5
 
 filtered_data['label'] = 0
-filtered_data.ix[filtered_data[pred_col] > thresh, 'label'] = 1
-filtered_data.ix[filtered_data[pred_col] < -thresh, 'label'] = -1
+filtered_data.loc[filtered_data[pred_col] > thresh, 'label'] = 1
+filtered_data.loc[filtered_data[pred_col] < -thresh, 'label'] = -1
 
-clf = svm.SVC(C=1.0, kernel='rbf', class_weight='auto')
+clf = svm.SVC(C=c, kernel='rbf', class_weight='auto')
 cv_results = cross_validation(filtered_data, clf, feature_names, label='label', K=5)
 y = filtered_data['label'].values
 #reg = sm.OLS(y, quotes[feature_names]).fit()
@@ -316,6 +261,7 @@ Filtered-data Rbf SVM, 3-class 5-fold CV, auto class weights
 print "crossover_hls = {}".format(crossover_hls)
 print "Pred_col = {}".format(pred_col)
 print "thresh = {}".format(thresh)
+print "C = {}".format(c)
 clf_output(cv_results, y, K)
 
 
@@ -325,12 +271,12 @@ hl = 100
 K = 5
 
 filtered_data['label'] = 0
-filtered_data.ix[filtered_data[pred_col] > thresh, 'label'] = 1
-filtered_data.ix[filtered_data[pred_col] < -thresh, 'label'] = -1
+filtered_data.loc[filtered_data[pred_col] > thresh, 'label'] = 1
+filtered_data.loc[filtered_data[pred_col] < -thresh, 'label'] = -1
 
 #clf = LRclf(thresh)
 
-clf = svm.SVC(C=1.0, kernel='rbf', class_weight='auto')
+clf = svm.SVC(C=c, kernel='rbf', class_weight='auto')
 cv_results = cross_validation(filtered_data, clf, feature_names, label='label', K=5)
 y = filtered_data['label'].values
 #reg = sm.OLS(y, quotes[feature_names]).fit()
@@ -342,4 +288,5 @@ Filtered-data Rbf SVM, 3-class 5-fold CV, auto class weights
 print "crossover_hls = {}".format(crossover_hls)
 print "Pred_col = {}".format(pred_col)
 print "thresh = {}".format(thresh)
+print "C = {}".format(c)
 clf_output(cv_results, y, K)

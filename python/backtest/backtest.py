@@ -61,8 +61,8 @@ def backtest(strategy, quotes, trades=None, transaction_costs=0.005, slippage_ra
                 continue
             sdata = security_data[order.sym]
             positions[order.sym] = positions.get(order.sym, 0) + order.qty
-            price = sdata['BID_PRICE'] if order.qty > 0 else sdata['ASK_PRICE']
-            book_qty = sdata['BID_SIZE'] if order.qty > 0 else sdata['ASK_SIZE']
+            price = sdata['BID_PRICE'] if order.qty < 0 else sdata['ASK_PRICE']
+            book_qty = sdata['BID_SIZE'] if order.qty < 0 else sdata['ASK_SIZE']
             price = slippage(price, order.qty, book_qty)
             order_history.append((time, order.sym, order.qty, price))
             cash[0] -= order.qty * price
